@@ -1,0 +1,63 @@
+@import url('https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=Playfair+Display:wght@600;700&display=swap');
+
+:root {
+  --color-primary: #5c20a8;
+  --color-primary-dark: #37116f;
+  --color-primary-light: #8b4bd1;
+  --color-secondary: #d4148e;
+  --color-secondary-light: #f23f9d;
+  --color-accent: #f4b942;
+  --color-accent-light: #ffdf69;
+  --color-cyan: #23b7dc;
+  --color-ink: #211a2e;
+  --color-text: #554c62;
+  --color-muted: #8c8495;
+  --color-border: #e8e1ed;
+  --color-surface: #ffffff;
+  --color-background: #f8f5fa;
+  --color-error: #c72c52;
+  --color-success: #26865d;
+  --gradient-brand: linear-gradient(
+    135deg,
+    var(--color-primary-dark),
+    var(--color-primary) 48%,
+    var(--color-secondary)
+  );
+  --gradient-accent: linear-gradient(135deg, var(--color-accent-light), var(--color-accent));
+  --font-body: 'DM Sans', sans-serif;
+  --font-display: 'Playfair Display', serif;
+  --shadow-card: 0 24px 70px rgba(55, 17, 111, 0.16);
+  --radius-card: 28px;
+  --radius-control: 12px;
+}
+
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+html {
+  min-width: 320px;
+  min-height: 100%;
+  font-family: var(--font-body);
+  color: var(--color-ink);
+  background: var(--color-background);
+}
+
+body {
+  min-height: 100vh;
+  margin: 0;
+  background: var(--color-background);
+  -webkit-font-smoothing: antialiased;
+}
+
+button,
+input {
+  font: inherit;
+}
+
+button,
+a {
+  -webkit-tap-highlight-color: transparent;
+}
