@@ -1,5 +1,8 @@
-import { Component, signal } from '@angular/core';
+import { Component, inject, signal } from '@angular/core';
 import { FormControl, FormGroup, ReactiveFormsModule, Validators } from '@angular/forms';
+import { Router } from '@angular/router';
+
+import { AuthService } from '../../../core/auth/auth.service';
 
 @Component({
   selector: 'app-login',
@@ -8,8 +11,12 @@ import { FormControl, FormGroup, ReactiveFormsModule, Validators } from '@angula
   styleUrl: './login.scss',
 })
 export class Login {
+  private readonly authService = inject(AuthService);
+  private readonly router = inject(Router);
+
   protected readonly showPassword = signal(false);
   protected readonly formSubmitted = signal(false);
+  protected readonly invalidCredentials = signal(false);
 
   protected readonly loginForm = new FormGroup({
     email: new FormControl('', {
@@ -29,12 +36,20 @@ export class Login {
 
   protected submit(): void {
     this.formSubmitted.set(true);
+    this.invalidCredentials.set(false);
     this.loginForm.markAllAsTouched();
-    let formValue =  this.loginForm.value;
-    if(formValue.email == 'gouthamharshith115@gmail.com' && formValue.password == 'test@123')
-    {
-      
+
+    if (this.loginForm.invalid) {
+      return;
     }
 
+    const { email, password } = this.loginForm.getRawValue();
+
+    if (this.authService.login(email, password)) {
+      void this.router.navigate(['/dashboard']);
+      return;
+    }
+
+    this.invalidCredentials.set(true);
   }
 }

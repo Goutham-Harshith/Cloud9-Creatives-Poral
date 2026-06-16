@@ -1,0 +1,52 @@
+<header class="site-header">
+  <a class="brand" routerLink="/dashboard" aria-label="Cloud9 Creatives dashboard">
+    <span class="brand__logo">
+      <img src="/assets/brand/cloud9-creatives-logo.jpg" alt="Cloud9 Creatives" />
+    </span>
+    <span class="brand__copy">
+      <strong>Cloud9 Creatives</strong>
+      <small>Creative order studio</small>
+    </span>
+  </a>
+
+  <div class="header-actions">
+    <nav class="primary-nav" aria-label="Primary navigation">
+      <a
+        routerLink="/dashboard"
+        routerLinkActive="nav-link--active"
+        [routerLinkActiveOptions]="{ exact: true }"
+        class="nav-link"
+      >
+        <svg viewBox="0 0 24 24" aria-hidden="true">
+          <path d="m3 11 9-8 9 8" />
+          <path d="M5 10v10h14V10M9 20v-6h6v6" />
+        </svg>
+        <span>Home</span>
+      </a>
+      <a routerLink="/reports" routerLinkActive="nav-link--active" class="nav-link">
+        <svg viewBox="0 0 24 24" aria-hidden="true">
+          <path d="M5 20V10M12 20V4M19 20v-7" />
+          <path d="M3 20h18" />
+        </svg>
+        <span>Reports</span>
+      </a>
+    </nav>
+
+    <span class="divider" aria-hidden="true"></span>
+
+    <div class="profile" [attr.title]="userEmail">
+      <span class="profile__avatar">{{ profileInitial }}</span>
+      <span class="profile__copy">
+        <strong>My profile</strong>
+        <small>{{ userEmail }}</small>
+      </span>
+    </div>
+
+    <button type="button" class="logout-button" (click)="logout()" aria-label="Log out">
+      <svg viewBox="0 0 24 24" aria-hidden="true">
+        <path d="M10 5H5v14h5M14 8l4 4-4 4M8 12h10" />
+      </svg>
+      <span>Logout</span>
+    </button>
+  </div>
+</header>

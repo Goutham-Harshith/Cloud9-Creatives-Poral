@@ -1,5 +1,7 @@
 import { Routes } from '@angular/router';
 
+import { authGuard } from './core/auth/auth.guard';
+
 export const routes: Routes = [
   {
     path: 'login',
@@ -8,8 +10,28 @@ export const routes: Routes = [
   },
   {
     path: '',
-    pathMatch: 'full',
-    redirectTo: 'login',
+    loadComponent: () =>
+      import('./layout/app-layout/app-layout').then((component) => component.AppLayout),
+    canActivate: [authGuard],
+    children: [
+      {
+        path: 'dashboard',
+        loadComponent: () =>
+          import('./features/dashboard/dashboard').then((component) => component.Dashboard),
+        title: 'Dashboard | Cloud9 Creatives',
+      },
+      {
+        path: 'reports',
+        loadComponent: () =>
+          import('./features/reports/reports').then((component) => component.Reports),
+        title: 'Reports | Cloud9 Creatives',
+      },
+      {
+        path: '',
+        pathMatch: 'full',
+        redirectTo: 'dashboard',
+      },
+    ],
   },
   {
     path: '**',

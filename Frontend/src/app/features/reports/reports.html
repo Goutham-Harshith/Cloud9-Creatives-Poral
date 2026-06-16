@@ -1,0 +1,153 @@
+<section class="reports-page">
+  <div class="page-heading">
+    <div>
+      <span class="eyebrow">Performance overview</span>
+      <h1>Reports</h1>
+      <p>Track studio performance, revenue, and project delivery at a glance.</p>
+    </div>
+    <div class="report-actions">
+      <button type="button" class="period-button">
+        <svg viewBox="0 0 24 24" aria-hidden="true">
+          <rect x="4" y="6" width="16" height="14" rx="2" />
+          <path d="M8 3v6M16 3v6M4 10h16" />
+        </svg>
+        This month
+      </button>
+      <button type="button" class="export-button">
+        <svg viewBox="0 0 24 24" aria-hidden="true">
+          <path d="M12 3v12M8 11l4 4 4-4M5 20h14" />
+        </svg>
+        <span>Export</span>
+      </button>
+    </div>
+  </div>
+
+  <div class="summary-grid">
+    <article>
+      <span>Total revenue</span><strong>$18,600</strong>
+      <small class="positive">+14.5% from last month</small>
+    </article>
+    <article>
+      <span>Orders completed</span><strong>38</strong>
+      <small class="positive">+8 completed projects</small>
+    </article>
+    <article>
+      <span>Average order value</span><strong>$489</strong>
+      <small class="positive">+5.2% from last month</small>
+    </article>
+    <article>
+      <span>On-time delivery</span><strong>94%</strong>
+      <small>2 projects need attention</small>
+    </article>
+  </div>
+
+  <div class="report-grid">
+    <article class="panel chart-panel">
+      <div class="panel-heading">
+        <div>
+          <h2>Revenue trend</h2>
+          <p>Monthly studio revenue across the last six months</p>
+        </div>
+        <span class="legend"><i></i> Revenue</span>
+      </div>
+      <div class="chart">
+        <div class="chart__scale">
+          <span>$20k</span><span>$15k</span><span>$10k</span><span>$5k</span><span>$0</span>
+        </div>
+        <div class="chart__plot">
+          <div class="grid-lines"><i></i><i></i><i></i><i></i><i></i></div>
+          <svg
+            viewBox="0 0 600 230"
+            preserveAspectRatio="none"
+            aria-label="Revenue increased from January through June"
+          >
+            <defs>
+              <linearGradient id="area" x1="0" x2="0" y1="0" y2="1">
+                <stop offset="0%" stop-color="#8b4bd1" stop-opacity=".3" />
+                <stop offset="100%" stop-color="#8b4bd1" stop-opacity="0" />
+              </linearGradient>
+            </defs>
+            <path
+              class="area"
+              d="M0 185 C65 168 85 170 120 152 S200 140 240 121 S320 132 360 98 S430 94 480 70 S550 54 600 25 L600 230 L0 230 Z"
+            />
+            <path
+              class="line"
+              d="M0 185 C65 168 85 170 120 152 S200 140 240 121 S320 132 360 98 S430 94 480 70 S550 54 600 25"
+            />
+            <g class="points">
+              <circle cx="0" cy="185" r="5" /><circle cx="120" cy="152" r="5" />
+              <circle cx="240" cy="121" r="5" /><circle cx="360" cy="98" r="5" />
+              <circle cx="480" cy="70" r="5" /><circle cx="600" cy="25" r="5" />
+            </g>
+          </svg>
+          <div class="chart__labels">
+            <span>Jan</span><span>Feb</span><span>Mar</span>
+            <span>Apr</span><span>May</span><span>Jun</span>
+          </div>
+        </div>
+      </div>
+    </article>
+
+    <article class="panel category-panel">
+      <div class="panel-heading">
+        <div>
+          <h2>Revenue by category</h2>
+          <p>Where your studio revenue comes from</p>
+        </div>
+      </div>
+      <div class="donut-wrap">
+        <div class="donut">
+          <div><strong>$18.6k</strong><span>Total</span></div>
+        </div>
+      </div>
+      <div class="category-list">
+        @for (category of categories; track category.name) {
+          <div class="category-row">
+            <i [class]="'dot dot--' + category.color"></i>
+            <span>{{ category.name }}</span>
+            <small>{{ category.percentage }}%</small>
+            <strong>{{ category.value }}</strong>
+          </div>
+        }
+      </div>
+    </article>
+  </div>
+
+  <article class="panel delivery-panel">
+    <div class="panel-heading">
+      <div>
+        <h2>Delivery performance</h2>
+        <p>Project turnaround and completion quality this month</p>
+      </div>
+    </div>
+    <div class="delivery-metrics">
+      <div>
+        <span class="delivery-icon delivery-icon--purple">
+          <svg viewBox="0 0 24 24"><path d="M4 12h16M12 4v16" /></svg>
+        </span>
+        <p><strong>4.2 days</strong><span>Average turnaround</span></p>
+      </div>
+      <div>
+        <span class="delivery-icon delivery-icon--pink">
+          <svg viewBox="0 0 24 24"><path d="M5 12.5 10 17l9-10" /></svg>
+        </span>
+        <p><strong>94%</strong><span>Delivered on time</span></p>
+      </div>
+      <div>
+        <span class="delivery-icon delivery-icon--cyan">
+          <svg viewBox="0 0 24 24">
+            <path d="M12 3 15 9l6 .8-4.5 4.4 1.1 6.3L12 17.6l-5.6 2.9 1.1-6.3L3 9.8 9 9Z" />
+          </svg>
+        </span>
+        <p><strong>4.8 / 5</strong><span>Client satisfaction</span></p>
+      </div>
+      <div>
+        <span class="delivery-icon delivery-icon--gold">
+          <svg viewBox="0 0 24 24"><path d="M12 3v18M5 8h14M5 16h14" /></svg>
+        </span>
+        <p><strong>12</strong><span>Repeat clients</span></p>
+      </div>
+    </div>
+  </article>
+</section>

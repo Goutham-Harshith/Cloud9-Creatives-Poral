@@ -139,10 +139,9 @@
             </svg>
           </button>
 
-          @if (formSubmitted() && loginForm.valid) {
-            <p class="integration-note" role="status">
-              The sign-in screen is ready. Account access will be enabled when the backend is
-              connected.
+          @if (invalidCredentials()) {
+            <p class="login-error" role="alert">
+              The email address or password is incorrect. Please try again.
             </p>
           }
         </form>
