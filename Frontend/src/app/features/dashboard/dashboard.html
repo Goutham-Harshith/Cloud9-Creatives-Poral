@@ -26,6 +26,7 @@
           <tr>
             <th>Order number</th>
             <th>Type</th>
+            <th>Quantity</th>
             <th>Size</th>
             <th>Updated date</th>
             <th>Status</th>
@@ -38,6 +39,7 @@
             <tr>
               <td><strong>{{ order.orderNumber }}</strong></td>
               <td>{{ order.type }}</td>
+              <td>{{ order.quantity ?? '-' }}</td>
               <td>{{ order.size }}</td>
               <td>{{ formatDate(order.updatedDate) }}</td>
               <td>
@@ -99,7 +101,7 @@
             </tr>
           } @empty {
             <tr>
-              <td colspan="7" class="empty-state">No orders are available in this tab.</td>
+              <td colspan="8" class="empty-state">No orders are available in this tab.</td>
             </tr>
           }
         </tbody>
@@ -111,7 +113,7 @@
         <span>Rows per page</span>
         <select [value]="pageSize()" (change)="changePageSize($event)">
           @for (option of pageSizeOptions; track option) {
-            <option [value]="option">{{ option }}</option>
+            <option [value]="option" [selected]="option === pageSize()">{{ option }}</option>
           }
         </select>
       </label>

@@ -40,14 +40,19 @@
 
   <form class="order-form" [formGroup]="orderForm" (ngSubmit)="createOrder()">
     <fieldset class="form-step" formGroupName="bag" *ngIf="currentStep === 1">
-      <legend>Bag details</legend>
+      <legend class="mb-3">Bag details</legend>
 
-      <label>
+      <label class="mt-2">
         <span class="required-label">Fabric</span>
         <select formControlName="fabric">
           <option value="" disabled>Select fabric</option>
           <option *ngFor="let fabric of fabrics" [value]="fabric">{{ fabric }}</option>
         </select>
+      </label>
+
+      <label>
+        <span class="required-label">Quantity</span>
+        <input type="number" formControlName="quantity" min="1" />
       </label>
       
       <label>
@@ -56,7 +61,7 @@
       </label>
 
       <div class="dimension-field">
-        <span class="required-label">Dimension</span>
+        <span class="">Dimension</span>
         <div class="dimension-field__inputs">
           <label>
             <span class="required-label">Width</span>
@@ -103,6 +108,11 @@
           <option value="" disabled>Select print</option>
           <option *ngFor="let print of prints" [value]="print">{{ print }}</option>
         </select>
+      </label>
+
+      <label class="order-form__wide">
+        <span>Notes</span>
+        <textarea rows="3" formControlName="notes"></textarea>
       </label>
     </fieldset>
 
@@ -238,11 +248,6 @@
   @if (showDeleteConfirmation()) {
     <div class="confirm-modal" role="dialog" aria-modal="true" aria-labelledby="delete-order-title">
       <div class="confirm-modal__content">
-        <div class="confirm-modal__icon" aria-hidden="true">
-          <svg viewBox="0 0 24 24">
-            <path d="M4 7h16M10 11v6M14 11v6M6 7l1 14h10l1-14M9 7V4h6v3" />
-          </svg>
-        </div>
         <div>
           <span class="confirm-modal__eyebrow">Confirm delete</span>
           <h2 id="delete-order-title">Delete {{ orderNumber || 'this order' }}?</h2>

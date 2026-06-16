@@ -45,6 +45,7 @@ export class Admin implements OnInit {
   protected readonly orderForm = this.formBuilder.group({
     bag: this.formBuilder.group({
       fabric: ['', Validators.required],
+      quantity: [null as number | null, Validators.required],
       dueDate: ['', Validators.required],
       width: [null as number | null, Validators.required],
       height: [null as number | null, Validators.required],
@@ -53,6 +54,7 @@ export class Admin implements OnInit {
       color: ['', Validators.required],
       handle: ['', Validators.required],
       print: ['', Validators.required],
+      notes: [''],
     }),
     designs: this.formBuilder.array([this.createDesignGroup()]),
     customer: this.formBuilder.group({
@@ -236,7 +238,19 @@ export class Admin implements OnInit {
     }
 
     this.orderForm.patchValue({
-      bag: order.bag,
+      bag: {
+        fabric: order.bag.fabric ?? '',
+        quantity: order.bag.quantity ?? null,
+        dueDate: order.bag.dueDate ?? '',
+        width: order.bag.width ?? null,
+        height: order.bag.height ?? null,
+        gusset: order.bag.gusset ?? null,
+        zip: order.bag.zip ?? '',
+        color: order.bag.color ?? '',
+        handle: order.bag.handle ?? '',
+        print: order.bag.print ?? '',
+        notes: order.bag.notes ?? '',
+      },
       customer: order.customer,
     });
   }
@@ -269,6 +283,7 @@ export class Admin implements OnInit {
     this.orderForm.reset({
       bag: {
         fabric: '',
+        quantity: null,
         dueDate: '',
         width: null,
         height: null,
@@ -277,6 +292,7 @@ export class Admin implements OnInit {
         color: '',
         handle: '',
         print: '',
+        notes: '',
       },
       customer: {
         name: '',

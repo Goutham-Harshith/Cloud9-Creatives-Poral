@@ -7,6 +7,7 @@ const API_BASE_URL = 'http://localhost:3000/api';
 interface CreateOrderPayload {
   bag: {
     fabric: string | null;
+    quantity: number | null;
     dueDate: string | null;
     width: number | null;
     height: number | null;
@@ -15,6 +16,7 @@ interface CreateOrderPayload {
     color: string | null;
     handle: string | null;
     print: string | null;
+    notes: string | null;
   };
   designs: Array<{
     fileName: string | null;
@@ -44,6 +46,7 @@ export interface DashboardOrder {
   id: string;
   orderNumber: string;
   type: string;
+  quantity: number | null;
   size: string;
   updatedDate: string;
   status: 'Ready to pick' | 'In progress' | 'Complete';

@@ -16,6 +16,10 @@ import { AnyFilesInterceptor } from '@nestjs/platform-express';
 import { OrdersService } from './orders.service';
 import { type UploadedOrderFile } from './orders.service';
 
+const MAX_ORDER_UPLOAD_FILE_SIZE = 25 * 1024 * 1024;
+const MAX_ORDER_UPLOAD_FILES = 50;
+const MAX_ORDER_FIELD_SIZE = 2 * 1024 * 1024;
+
 @Controller('orders')
 export class OrdersController {
   constructor(private readonly ordersService: OrdersService) {}
@@ -44,8 +48,9 @@ export class OrdersController {
   @UseInterceptors(
     AnyFilesInterceptor({
       limits: {
-        fileSize: 10 * 1024 * 1024,
-        files: 20,
+        fileSize: MAX_ORDER_UPLOAD_FILE_SIZE,
+        files: MAX_ORDER_UPLOAD_FILES,
+        fieldSize: MAX_ORDER_FIELD_SIZE,
       },
       fileFilter: (_request, file, callback) => {
         const isAccepted =
@@ -74,8 +79,9 @@ export class OrdersController {
   @UseInterceptors(
     AnyFilesInterceptor({
       limits: {
-        fileSize: 10 * 1024 * 1024,
-        files: 20,
+        fileSize: MAX_ORDER_UPLOAD_FILE_SIZE,
+        files: MAX_ORDER_UPLOAD_FILES,
+        fieldSize: MAX_ORDER_FIELD_SIZE,
       },
       fileFilter: (_request, file, callback) => {
         const isAccepted =

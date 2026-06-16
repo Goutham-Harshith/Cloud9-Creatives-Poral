@@ -17,6 +17,7 @@ export interface UploadedOrderFile {
 interface IncomingOrder {
   bag: {
     fabric: string;
+    quantity: number | null;
     dueDate: string;
     width: number | null;
     height: number | null;
@@ -25,6 +26,7 @@ interface IncomingOrder {
     color: string;
     handle: string;
     print: string;
+    notes?: string | null;
   };
   designs: Array<{
     fileName: string;
@@ -136,6 +138,7 @@ export class OrdersService {
       id: order.id,
       orderNumber: order.orderNumber,
       type: order.bag.fabric,
+      quantity: order.bag.quantity ?? null,
       size: `${order.bag.width ?? 0}w x ${order.bag.height ?? 0}h x ${order.bag.gusset ?? 0}g`,
       updatedDate: order.createdAt,
       status: this.toDashboardStatus(order.status),

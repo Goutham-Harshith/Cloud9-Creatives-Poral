@@ -1,4 +1,4 @@
-@import url('https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=Playfair+Display:wght@600;700&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=Plus+Jakarta+Sans:wght@600;700;800&display=swap');
 
 :root {
   --color-primary: #5c20a8;
@@ -25,7 +25,7 @@
   );
   --gradient-accent: linear-gradient(135deg, var(--color-accent-light), var(--color-accent));
   --font-body: 'DM Sans', sans-serif;
-  --font-display: 'Playfair Display', serif;
+  --font-display: 'Plus Jakarta Sans', sans-serif;
   --shadow-card: 0 24px 70px rgba(55, 17, 111, 0.16);
   --radius-card: 28px;
   --radius-control: 12px;
