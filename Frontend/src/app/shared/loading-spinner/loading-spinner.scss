@@ -1,0 +1,118 @@
+:host {
+  pointer-events: none;
+}
+
+.loading-backdrop {
+  align-items: center;
+  background:
+    radial-gradient(circle at 42% 38%, rgba(255, 255, 255, 0.68), transparent 24%),
+    rgba(248, 245, 250, 0.52);
+  display: flex;
+  inset: 0;
+  justify-content: center;
+  pointer-events: all;
+  position: fixed;
+  z-index: 9999;
+}
+
+.loading-card {
+  align-items: center;
+  background: rgba(255, 255, 255, 0.92);
+  border: 1px solid rgba(92, 32, 168, 0.1);
+  border-radius: 18px;
+  box-shadow: 0 24px 70px rgba(55, 17, 111, 0.18);
+  display: grid;
+  gap: 12px;
+  justify-items: center;
+  min-width: 150px;
+  padding: 24px 28px 20px;
+}
+
+.loading-card p {
+  color: var(--color-primary);
+  font-size: 0.78rem;
+  font-weight: 800;
+  letter-spacing: 0.12em;
+  margin: 0;
+  text-transform: uppercase;
+}
+
+.spinner {
+  height: 58px;
+  position: relative;
+  width: 58px;
+}
+
+.spinner::before,
+.spinner::after,
+.spinner span {
+  border-radius: 50%;
+  content: '';
+  inset: 0;
+  position: absolute;
+}
+
+.spinner::before {
+  background: conic-gradient(
+    from 0deg,
+    var(--color-primary-dark),
+    var(--color-primary),
+    var(--color-secondary),
+    var(--color-accent),
+    var(--color-primary-dark)
+  );
+  animation: spin 950ms linear infinite;
+}
+
+.spinner::after {
+  background: var(--color-surface);
+  inset: 7px;
+}
+
+.spinner span:nth-child(1) {
+  background: rgba(255, 255, 255, 0.88);
+  inset: 19px;
+  z-index: 2;
+}
+
+.spinner span:nth-child(2) {
+  background: var(--color-accent-light);
+  height: 9px;
+  left: 50%;
+  top: -2px;
+  transform: translateX(-50%);
+  width: 9px;
+  z-index: 3;
+}
+
+.spinner span:nth-child(3) {
+  animation: pulse 1200ms ease-in-out infinite;
+  border: 1px solid rgba(92, 32, 168, 0.18);
+  inset: -7px;
+}
+
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+@keyframes pulse {
+  0%,
+  100% {
+    opacity: 0.35;
+    transform: scale(0.92);
+  }
+
+  50% {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .spinner::before,
+  .spinner span:nth-child(3) {
+    animation-duration: 1800ms;
+  }
+}

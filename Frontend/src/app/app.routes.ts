@@ -21,6 +21,12 @@ export const routes: Routes = [
         title: 'Dashboard | Cloud9 Creatives',
       },
       {
+        path: 'admin',
+        loadComponent: () =>
+          import('./features/admin/admin').then((component) => component.Admin),
+        title: 'Admin | Cloud9 Creatives',
+      },
+      {
         path: 'reports',
         loadComponent: () =>
           import('./features/reports/reports').then((component) => component.Reports),

@@ -1,22 +1,35 @@
 import { Injectable } from '@angular/core';
+import { HttpClient } from '@angular/common/http';
+import { Observable, tap } from 'rxjs';
 
-const AUTH_STORAGE_KEY = 'cloud9-auth-email';
+const AUTH_STORAGE_KEY = 'cloud9-auth-session';
+const API_BASE_URL = 'http://localhost:3000/api';
+
+export interface AuthUser {
+  id: string;
+  email: string;
+  name: string;
+  role: string;
+}
+
+export interface LoginResponse {
+  accessToken: string;
+  user: AuthUser;
+}
 
 @Injectable({
   providedIn: 'root',
 })
 export class AuthService {
-  private readonly email = 'gouthamharshith115@gmail.com';
-  private readonly password = 'test@123';
+  constructor(private readonly http: HttpClient) {}
 
-  login(email: string, password: string): boolean {
-    const isValid = email.trim().toLowerCase() === this.email && password === this.password;
-
-    if (isValid) {
-      sessionStorage.setItem(AUTH_STORAGE_KEY, this.email);
-    }
-
-    return isValid;
+  login(email: string, password: string): Observable<LoginResponse> {
+    return this.http
+      .post<LoginResponse>(`${API_BASE_URL}/auth/login`, {
+        email: email.trim().toLowerCase(),
+        password,
+      })
+      .pipe(tap((session) => sessionStorage.setItem(AUTH_STORAGE_KEY, JSON.stringify(session))));
   }
 
   logout(): void {
@@ -24,14 +37,33 @@ export class AuthService {
   }
 
   isAuthenticated(): boolean {
-    return sessionStorage.getItem(AUTH_STORAGE_KEY) === this.email;
+    return Boolean(this.session?.accessToken);
   }
 
   get userEmail(): string {
-    return sessionStorage.getItem(AUTH_STORAGE_KEY) ?? this.email;
+    return this.session?.user.email ?? '';
   }
 
   get profileInitial(): string {
-    return this.userEmail.charAt(0).toUpperCase();
+    return this.userEmail.charAt(0).toUpperCase() || 'C';
+  }
+
+  get accessToken(): string | null {
+    return this.session?.accessToken ?? null;
+  }
+
+  private get session(): LoginResponse | null {
+    const rawSession = sessionStorage.getItem(AUTH_STORAGE_KEY);
+
+    if (!rawSession) {
+      return null;
+    }
+
+    try {
+      return JSON.parse(rawSession) as LoginResponse;
+    } catch {
+      sessionStorage.removeItem(AUTH_STORAGE_KEY);
+      return null;
+    }
   }
 }

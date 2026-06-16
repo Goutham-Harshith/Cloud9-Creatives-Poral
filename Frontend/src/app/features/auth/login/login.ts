@@ -17,6 +17,7 @@ export class Login {
   protected readonly showPassword = signal(false);
   protected readonly formSubmitted = signal(false);
   protected readonly invalidCredentials = signal(false);
+  protected readonly isSubmitting = signal(false);
 
   protected readonly loginForm = new FormGroup({
     email: new FormControl('', {
@@ -44,12 +45,17 @@ export class Login {
     }
 
     const { email, password } = this.loginForm.getRawValue();
+    this.isSubmitting.set(true);
 
-    if (this.authService.login(email, password)) {
-      void this.router.navigate(['/dashboard']);
-      return;
-    }
-
-    this.invalidCredentials.set(true);
+    this.authService.login(email, password).subscribe({
+      next: () => {
+        this.isSubmitting.set(false);
+        void this.router.navigate(['/dashboard']);
+      },
+      error: () => {
+        this.isSubmitting.set(false);
+        this.invalidCredentials.set(true);
+      },
+    });
   }
 }

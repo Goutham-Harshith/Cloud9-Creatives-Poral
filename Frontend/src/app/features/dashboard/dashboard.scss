@@ -35,7 +35,6 @@ h1 {
 }
 
 .orders-panel {
-  overflow: hidden;
   border: 1px solid rgba(92, 32, 168, 0.08);
   border-radius: 22px;
   background: rgba(255, 255, 255, 0.94);
@@ -89,7 +88,7 @@ h1 {
 }
 
 .table-wrap {
-  overflow-x: auto;
+  overflow: visible;
   scrollbar-width: none;
 }
 
@@ -137,11 +136,24 @@ td strong {
 }
 
 .status {
-  display: inline-block;
+  align-items: center;
+  border: 1px solid transparent;
   padding: 6px 10px;
   border-radius: 20px;
+  cursor: pointer;
+  display: inline-flex;
+  gap: 6px;
   font-size: 0.7rem;
   font-weight: 700;
+}
+
+.status svg {
+  width: 13px;
+  fill: none;
+  stroke: currentColor;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  stroke-width: 2.2;
 }
 
 .status--in-progress {
@@ -150,8 +162,9 @@ td strong {
 }
 
 .status--ready-to-pick {
+  border-color: rgba(38, 134, 93, 0.2);
   color: var(--color-success);
-  background: rgba(38, 134, 93, 0.09);
+  background: #ffffff;
 }
 
 .status--complete {
@@ -159,9 +172,55 @@ td strong {
   background: rgba(35, 183, 220, 0.12);
 }
 
+.status-menu {
+  display: inline-block;
+  position: relative;
+}
+
+.status-menu__list {
+  background: #ffffff;
+  border: 1px solid var(--color-border);
+  border-radius: 8px;
+  box-shadow: 0 14px 30px rgba(55, 17, 111, 0.14);
+  display: grid;
+  gap: 4px;
+  left: 0;
+  min-width: 132px;
+  padding: 6px;
+  position: absolute;
+  top: calc(100% + 8px);
+  z-index: 10;
+}
+
+.status-menu__list button {
+  background: transparent;
+  border: 0;
+  border-radius: 6px;
+  color: var(--color-text);
+  cursor: pointer;
+  font: inherit;
+  font-size: 0.78rem;
+  font-weight: 700;
+  min-height: 34px;
+  padding: 0 10px;
+  text-align: left;
+}
+
+.status-menu__list button:hover {
+  background: rgba(92, 32, 168, 0.06);
+  color: var(--color-primary);
+}
+
 .actions-heading,
 .actions-cell {
   text-align: center;
+}
+
+.actions-cell {
+  align-items: center;
+  display: flex;
+  gap: 8px;
+  justify-content: center;
 }
 
 .pagination {
@@ -250,7 +309,7 @@ td strong {
   stroke-width: 1.8;
 }
 
-.download-button {
+.action-button {
   display: inline-grid;
   width: 38px;
   height: 38px;
@@ -266,13 +325,13 @@ td strong {
     transform 160ms ease;
 }
 
-.download-button:hover {
+.action-button:hover {
   color: white;
   background: var(--color-primary);
   transform: translateY(-1px);
 }
 
-.download-button svg {
+.action-button svg {
   width: 19px;
   fill: none;
   stroke: currentColor;
@@ -351,5 +410,37 @@ td strong {
     order: 3;
     width: 100%;
     justify-content: center;
+  }
+}
+
+@media (max-width: 700px) {
+  .tabs,
+  .order-tabs,
+  .orders-tabs {
+    display: flex;
+    overflow-x: auto;
+    overflow-y: hidden;
+    scrollbar-width: thin;
+    white-space: nowrap;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  .tabs button,
+  .order-tabs button,
+  .orders-tabs button {
+    flex: 0 0 auto;
+    min-width: max-content;
+  }
+
+  .table-responsive,
+  .table-wrapper,
+  .orders-table-wrapper,
+  .table-wrap {
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  table {
+    min-width: 560px;
   }
 }

@@ -41,15 +41,52 @@
               <td>{{ order.size }}</td>
               <td>{{ formatDate(order.updatedDate) }}</td>
               <td>
-                <span [class]="'status status--' + statusClass(order.status)">
-                  {{ order.status }}
-                </span>
+                <div class="status-menu">
+                  <button
+                    type="button"
+                    [class]="'status status--' + statusClass(order.status)"
+                    (click)="toggleStatusMenu(order.orderNumber)"
+                    [attr.aria-expanded]="openStatusMenu() === order.orderNumber"
+                    [attr.aria-label]="'Change status for order ' + order.orderNumber"
+                  >
+                    <span>{{ order.status }}</span>
+                    <svg viewBox="0 0 24 24" aria-hidden="true">
+                      <path d="m6 9 6 6 6-6" />
+                    </svg>
+                  </button>
+
+                  @if (openStatusMenu() === order.orderNumber) {
+                    <div class="status-menu__list" role="menu">
+                      @for (status of statusOptions; track status) {
+                        <button
+                          type="button"
+                          role="menuitem"
+                          (click)="updateStatus(order, status)"
+                        >
+                          {{ status }}
+                        </button>
+                      }
+                    </div>
+                  }
+                </div>
               </td>
               <td class="due-cell">{{ formatDate(order.dueDate) }}</td>
               <td class="actions-cell">
                 <button
                   type="button"
-                  class="download-button"
+                  class="action-button"
+                  (click)="editOrder(order)"
+                  [attr.aria-label]="'Edit order ' + order.orderNumber"
+                  title="Edit order"
+                >
+                  <svg viewBox="0 0 24 24" aria-hidden="true">
+                    <path d="M12 20h9" />
+                    <path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4Z" />
+                  </svg>
+                </button>
+                <button
+                  type="button"
+                  class="action-button"
                   (click)="downloadOrder(order)"
                   [attr.aria-label]="'Download order ' + order.orderNumber + ' as PDF'"
                   title="Download PDF"

@@ -132,8 +132,8 @@
             Keep me signed in
           </label>
 
-          <button type="submit" class="submit-button">
-            <span>Sign in</span>
+          <button type="submit" class="submit-button" [disabled]="isSubmitting()">
+            <span>{{ isSubmitting() ? 'Signing in...' : 'Sign in' }}</span>
             <svg viewBox="0 0 24 24" aria-hidden="true">
               <path d="M5 12h14m-5-5 5 5-5 5" />
             </svg>

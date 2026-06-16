@@ -1,27 +1,30 @@
-import { Component, computed, signal } from '@angular/core';
+import { Component, OnInit, computed, inject, signal } from '@angular/core';
+import { Router } from '@angular/router';
+
+import { DashboardOrder, OrderService } from '../../core/orders/order.service';
 
 type OrderStatus = 'Ready to pick' | 'In progress' | 'Complete';
 type OrderTab = 'current' | 'due' | 'completed';
 
-interface Order {
-  orderNumber: string;
-  type: 'Jute' | 'Juco' | 'Paper';
-  size: string;
-  updatedDate: string;
-  status: OrderStatus;
-  dueDate: string;
-}
+type Order = DashboardOrder;
 
 @Component({
   selector: 'app-dashboard',
   templateUrl: './dashboard.html',
   styleUrl: './dashboard.scss',
 })
-export class Dashboard {
+export class Dashboard implements OnInit {
+  private readonly orderService = inject(OrderService);
+  private readonly router = inject(Router);
+
   protected readonly activeTab = signal<OrderTab>('current');
   protected readonly currentPage = signal(1);
   protected readonly pageSize = signal(5);
   protected readonly pageSizeOptions = [10, 25, 50, 75, 100];
+  protected readonly orders = signal<Order[]>([]);
+  protected readonly isLoading = signal(false);
+  protected readonly openStatusMenu = signal<string | null>(null);
+  protected readonly statusOptions: OrderStatus[] = ['Ready to pick', 'In progress', 'Complete'];
 
   protected readonly tabs: { id: OrderTab; label: string }[] = [
     { id: 'current', label: 'Current orders' },
@@ -31,205 +34,10 @@ export class Dashboard {
 
   private readonly today = new Date(new Date().setHours(0, 0, 0, 0));
 
-  private readonly orders: Order[] = [
-    {
-      orderNumber: 'C9-1054',
-      type: 'Jute',
-      size: '10w x 12h x 5g',
-      updatedDate: '2026-06-15',
-      status: 'In progress',
-      dueDate: '2026-06-18',
-    },
-    {
-      orderNumber: 'C9-1052',
-      type: 'Paper',
-      size: '8w x 10h x 4g',
-      updatedDate: '2026-06-14',
-      status: 'Ready to pick',
-      dueDate: '2026-06-20',
-    },
-    {
-      orderNumber: 'C9-1051',
-      type: 'Juco',
-      size: '14w x 16h x 6g',
-      updatedDate: '2026-06-12',
-      status: 'In progress',
-      dueDate: '2026-06-24',
-    },
-    {
-      orderNumber: 'C9-1050',
-      type: 'Jute',
-      size: '11w x 13h x 5g',
-      updatedDate: '2026-06-13',
-      status: 'Ready to pick',
-      dueDate: '2026-06-26',
-    },
-    {
-      orderNumber: 'C9-1047',
-      type: 'Paper',
-      size: '7w x 9h x 3g',
-      updatedDate: '2026-06-12',
-      status: 'In progress',
-      dueDate: '2026-06-28',
-    },
-    {
-      orderNumber: 'C9-1045',
-      type: 'Juco',
-      size: '16w x 18h x 7g',
-      updatedDate: '2026-06-10',
-      status: 'Ready to pick',
-      dueDate: '2026-07-01',
-    },
-    {
-      orderNumber: 'C9-1043',
-      type: 'Jute',
-      size: '9w x 12h x 4g',
-      updatedDate: '2026-06-09',
-      status: 'In progress',
-      dueDate: '2026-07-03',
-    },
-    {
-      orderNumber: 'C9-1041',
-      type: 'Paper',
-      size: '13w x 15h x 5g',
-      updatedDate: '2026-06-07',
-      status: 'Ready to pick',
-      dueDate: '2026-07-06',
-    },
-    {
-      orderNumber: 'C9-1039',
-      type: 'Juco',
-      size: '12w x 16h x 6g',
-      updatedDate: '2026-06-05',
-      status: 'In progress',
-      dueDate: '2026-07-09',
-    },
-    {
-      orderNumber: 'C9-1049',
-      type: 'Jute',
-      size: '12w x 14h x 5g',
-      updatedDate: '2026-06-13',
-      status: 'In progress',
-      dueDate: '2026-06-14',
-    },
-    {
-      orderNumber: 'C9-1048',
-      type: 'Paper',
-      size: '9w x 11h x 4g',
-      updatedDate: '2026-06-11',
-      status: 'Ready to pick',
-      dueDate: '2026-06-15',
-    },
-    {
-      orderNumber: 'C9-1042',
-      type: 'Juco',
-      size: '11w x 14h x 5g',
-      updatedDate: '2026-06-08',
-      status: 'In progress',
-      dueDate: '2026-06-12',
-    },
-    {
-      orderNumber: 'C9-1040',
-      type: 'Paper',
-      size: '8w x 12h x 4g',
-      updatedDate: '2026-06-06',
-      status: 'Ready to pick',
-      dueDate: '2026-06-10',
-    },
-    {
-      orderNumber: 'C9-1038',
-      type: 'Jute',
-      size: '13w x 17h x 6g',
-      updatedDate: '2026-06-04',
-      status: 'In progress',
-      dueDate: '2026-06-08',
-    },
-    {
-      orderNumber: 'C9-1036',
-      type: 'Juco',
-      size: '10w x 15h x 5g',
-      updatedDate: '2026-06-02',
-      status: 'Ready to pick',
-      dueDate: '2026-06-05',
-    },
-    {
-      orderNumber: 'C9-1034',
-      type: 'Paper',
-      size: '9w x 10h x 4g',
-      updatedDate: '2026-05-30',
-      status: 'In progress',
-      dueDate: '2026-06-02',
-    },
-    {
-      orderNumber: 'C9-1046',
-      type: 'Juco',
-      size: '10w x 13h x 5g',
-      updatedDate: '2026-06-10',
-      status: 'Complete',
-      dueDate: '2026-06-11',
-    },
-    {
-      orderNumber: 'C9-1044',
-      type: 'Jute',
-      size: '15w x 18h x 7g',
-      updatedDate: '2026-06-08',
-      status: 'Complete',
-      dueDate: '2026-06-09',
-    },
-    {
-      orderNumber: 'C9-1037',
-      type: 'Paper',
-      size: '8w x 11h x 4g',
-      updatedDate: '2026-06-03',
-      status: 'Complete',
-      dueDate: '2026-06-06',
-    },
-    {
-      orderNumber: 'C9-1035',
-      type: 'Jute',
-      size: '12w x 15h x 5g',
-      updatedDate: '2026-06-01',
-      status: 'Complete',
-      dueDate: '2026-06-04',
-    },
-    {
-      orderNumber: 'C9-1033',
-      type: 'Juco',
-      size: '14w x 17h x 6g',
-      updatedDate: '2026-05-29',
-      status: 'Complete',
-      dueDate: '2026-06-01',
-    },
-    {
-      orderNumber: 'C9-1031',
-      type: 'Paper',
-      size: '7w x 10h x 3g',
-      updatedDate: '2026-05-27',
-      status: 'Complete',
-      dueDate: '2026-05-29',
-    },
-    {
-      orderNumber: 'C9-1029',
-      type: 'Jute',
-      size: '10w x 14h x 5g',
-      updatedDate: '2026-05-25',
-      status: 'Complete',
-      dueDate: '2026-05-27',
-    },
-    {
-      orderNumber: 'C9-1027',
-      type: 'Juco',
-      size: '15w x 19h x 7g',
-      updatedDate: '2026-05-22',
-      status: 'Complete',
-      dueDate: '2026-05-24',
-    },
-  ];
-
   protected readonly filteredOrders = computed(() => {
     const activeTab = this.activeTab();
 
-    return this.orders
+    return this.orders()
       .filter((order) => {
         const dueDate = this.toDate(order.dueDate);
 
@@ -243,7 +51,9 @@ export class Dashboard {
 
         return order.status !== 'Complete' && dueDate >= this.today;
       })
-      .sort((first, second) => this.toDate(first.dueDate).getTime() - this.toDate(second.dueDate).getTime());
+      .sort(
+        (first, second) => this.toDate(first.dueDate).getTime() - this.toDate(second.dueDate).getTime(),
+      );
   });
 
   protected readonly totalPages = computed(() =>
@@ -267,6 +77,10 @@ export class Dashboard {
     Math.min(this.currentPage() * this.pageSize(), this.filteredOrders().length),
   );
 
+  ngOnInit(): void {
+    this.loadOrders();
+  }
+
   protected selectTab(tab: OrderTab): void {
     this.activeTab.set(tab);
     this.currentPage.set(1);
@@ -284,15 +98,48 @@ export class Dashboard {
   }
 
   protected formatDate(date: string): string {
-    return this.toDate(date).toLocaleDateString('en-GB', {
+    return this.toDate(date).toLocaleString('en-GB', {
       day: '2-digit',
       month: 'short',
       year: 'numeric',
+      hour: '2-digit',
+      minute: '2-digit',
+      hour12: true,
     });
   }
 
   protected statusClass(status: OrderStatus): string {
     return status.toLowerCase().replaceAll(' ', '-');
+  }
+
+  protected toggleStatusMenu(orderNumber: string): void {
+    this.openStatusMenu.update((currentOrderNumber) =>
+      currentOrderNumber === orderNumber ? null : orderNumber,
+    );
+  }
+
+  protected updateStatus(order: Order, status: OrderStatus): void {
+    this.openStatusMenu.set(null);
+
+    this.orderService.updateOrderStatus(order.id, status).subscribe({
+      next: (updatedOrder) => {
+        this.orders.update((orders) =>
+          orders.map((currentOrder) =>
+            currentOrder.id === updatedOrder.id
+              ? { ...currentOrder, status: updatedOrder.status }
+              : currentOrder,
+          ),
+        );
+      },
+    });
+  }
+
+  protected editOrder(order: Order): void {
+    this.router.navigate(['/admin'], {
+      queryParams: {
+        orderId: order.id,
+      },
+    });
   }
 
   protected downloadOrder(order: Order): void {
@@ -317,8 +164,24 @@ export class Dashboard {
     window.setTimeout(() => URL.revokeObjectURL(url), 0);
   }
 
+  private loadOrders(): void {
+    this.isLoading.set(true);
+
+    this.orderService.getOrders().subscribe({
+      next: (orders) => {
+        this.orders.set(orders);
+        this.currentPage.set(1);
+        this.isLoading.set(false);
+      },
+      error: () => {
+        this.orders.set([]);
+        this.isLoading.set(false);
+      },
+    });
+  }
+
   private toDate(date: string): Date {
-    return new Date(`${date}T00:00:00`);
+    return date.includes('T') ? new Date(date) : new Date(`${date}T00:00:00`);
   }
 
   private createPdf(lines: string[]): string {
