@@ -1,0 +1,16 @@
+services:
+  postgres:
+    image: postgres:16-alpine
+    container_name: cloud9-creatives-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+      POSTGRES_DB: cloud9_creatives
+    ports:
+      - "5432:5432"
+    volumes:
+      - cloud9_postgres_data:/var/lib/postgresql/data
+
+volumes:
+  cloud9_postgres_data:

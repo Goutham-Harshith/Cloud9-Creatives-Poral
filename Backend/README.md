@@ -23,3 +23,33 @@ npm run start:dev
 ```
 
 The server runs on `http://localhost:3000` by default.
+
+## Database Login Setup
+
+The login API now reads users from PostgreSQL through Prisma.
+
+1. Copy `.env.example` to `.env`.
+2. Start PostgreSQL:
+
+```bash
+docker compose up -d
+```
+
+3. Create the database tables:
+
+```bash
+npm run prisma:migrate -- --name init
+```
+
+4. Seed the first admin user:
+
+```bash
+npm run prisma:seed
+```
+
+Seeded login:
+
+```txt
+Email: gouthamharshith115@gmail.com
+Password: test@123
+```
