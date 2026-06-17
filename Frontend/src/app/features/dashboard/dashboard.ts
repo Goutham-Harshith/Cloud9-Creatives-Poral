@@ -400,7 +400,13 @@ export class Dashboard implements OnInit {
 
         if (design.uploadedFile?.url && design.uploadedFile.mimeType.startsWith('image/')) {
           try {
-            const image = await this.loadImage(design.uploadedFile.url);
+            const imageUrl = this.orderService.getUploadedFileUrl(design.uploadedFile);
+
+            if (!imageUrl) {
+              throw new Error('Missing design image URL');
+            }
+
+            const image = await this.loadImage(imageUrl);
             const dimensions = this.fitImage(image.width, image.height, imageW, imageH);
             pdf.addImage(
               image,

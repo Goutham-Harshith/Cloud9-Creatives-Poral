@@ -256,7 +256,9 @@ export class Admin implements OnInit {
   }
 
   private getPreviewUrl(uploadedFile: UploadedOrderFile | null): string | null {
-    return uploadedFile?.mimeType.startsWith('image/') ? uploadedFile.url : null;
+    return uploadedFile?.mimeType.startsWith('image/')
+      ? this.orderService.getUploadedFileUrl(uploadedFile)
+      : null;
   }
 
   private createDesignGroup(value?: {

@@ -96,6 +96,10 @@ export interface DeletedOrder {
 export class OrderService {
   constructor(private readonly http: HttpClient) {}
 
+  getUploadedFileUrl(uploadedFile: UploadedOrderFile | null): string | null {
+    return uploadedFile?.url ? this.resolveUploadedFileUrl(uploadedFile.url) : null;
+  }
+
   createOrder(order: CreateOrderPayload): Observable<CreatedOrder> {
     const formData = new FormData();
     const orderPayload = {
@@ -151,5 +155,38 @@ export class OrderService {
 
   deleteOrder(orderId: string): Observable<DeletedOrder> {
     return this.http.delete<DeletedOrder>(`${API_BASE_URL}/orders/${orderId}`);
+  }
+
+  private resolveUploadedFileUrl(url: string): string {
+    if (url.startsWith('blob:') || url.startsWith('data:')) {
+      return url;
+    }
+
+    try {
+      const parsedUrl = new URL(url);
+
+      if (environment.production && this.isLocalhostUrl(parsedUrl)) {
+        return this.resolveUploadedFilePath(`${parsedUrl.pathname}${parsedUrl.search}${parsedUrl.hash}`);
+      }
+
+      return parsedUrl.href;
+    } catch {
+      return this.resolveUploadedFilePath(url);
+    }
+  }
+
+  private resolveUploadedFilePath(path: string): string {
+    const normalizedPath = path.startsWith('/') ? path : `/${path}`;
+
+    if (/^https?:\/\//i.test(API_BASE_URL)) {
+      const apiUrl = new URL(API_BASE_URL);
+      return `${apiUrl.origin}${normalizedPath}`;
+    }
+
+    return normalizedPath;
+  }
+
+  private isLocalhostUrl(url: URL): boolean {
+    return ['localhost', '127.0.0.1', '::1'].includes(url.hostname);
   }
 }
