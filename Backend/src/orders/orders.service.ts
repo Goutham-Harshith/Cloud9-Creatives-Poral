@@ -367,7 +367,7 @@ export class OrdersService {
             mimeType: file.mimetype,
             size: file.size,
             path: relativePath,
-            url: `http://localhost:3000${relativePath}`,
+            url: `${process.env.BACKEND_PUBLIC_URL ?? 'http://localhost:3000'}${relativePath}`,
           },
         };
       }),

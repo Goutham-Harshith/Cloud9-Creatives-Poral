@@ -16,7 +16,7 @@ import { AnyFilesInterceptor } from '@nestjs/platform-express';
 import { OrdersService } from './orders.service';
 import { type UploadedOrderFile } from './orders.service';
 
-const MAX_ORDER_UPLOAD_FILE_SIZE = 25 * 1024 * 1024;
+const MAX_ORDER_UPLOAD_FILE_SIZE = 125 * 1024 * 1024;
 const MAX_ORDER_UPLOAD_FILES = 50;
 const MAX_ORDER_FIELD_SIZE = 2 * 1024 * 1024;
 

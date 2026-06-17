@@ -2,8 +2,10 @@ import { Injectable } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
 import { Observable, tap } from 'rxjs';
 
+import { environment } from '../../../environments/environment';
+
 const AUTH_STORAGE_KEY = 'cloud9-auth-session';
-const API_BASE_URL = '/api';
+const API_BASE_URL = environment.apiBaseUrl;
 
 export interface AuthUser {
   id: string;
