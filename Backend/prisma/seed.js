@@ -4,22 +4,46 @@ const { hashSync } = require('bcryptjs');
 const prisma = new PrismaClient();
 
 async function main() {
-  await prisma.user.upsert({
-    where: {
-      email: 'gouthamharshith115@gmail.com',
-    },
-    update: {
-      name: 'Cloud9 Admin',
-      role: UserRole.SUPER_ADMIN,
-      isActive: true,
-    },
-    create: {
+  const users = [
+    {
       email: 'gouthamharshith115@gmail.com',
       name: 'Cloud9 Admin',
+      password: 'test@123',
       role: UserRole.SUPER_ADMIN,
-      passwordHash: hashSync('test@123', 10),
     },
-  });
+    {
+      email: 'suchidanthuluri@gmail.com',
+      name: 'Suchi Danthuluri',
+      password: 'suchibhanu369',
+      role: UserRole.SUPER_ADMIN,
+    },
+    {
+      email: 'hema@yopmail.com',
+      name: 'Hema',
+      password: 'cloud9',
+      role: UserRole.MANAGER,
+    },
+  ];
+
+  for (const user of users) {
+    await prisma.user.upsert({
+      where: {
+        email: user.email,
+      },
+      update: {
+        name: user.name,
+        role: user.role,
+        passwordHash: hashSync(user.password, 10),
+        isActive: true,
+      },
+      create: {
+        email: user.email,
+        name: user.name,
+        role: user.role,
+        passwordHash: hashSync(user.password, 10),
+      },
+    });
+  }
 }
 
 main()

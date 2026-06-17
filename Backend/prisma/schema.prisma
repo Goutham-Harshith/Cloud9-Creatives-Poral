@@ -9,11 +9,19 @@ datasource db {
 
 enum UserRole {
   SUPER_ADMIN
+  MANAGER
   ADMIN
   SALES
   PRODUCTION
   DISPATCH
   CUSTOMER
+}
+
+enum OrderStatus {
+  DRAFT
+  ORDER_CREATED
+  IN_PROGRESS
+  COMPLETE
 }
 
 model User {
@@ -27,4 +35,51 @@ model User {
   updatedAt    DateTime @updatedAt
 
   @@map("users")
+}
+
+model Order {
+  id                     String        @id
+  orderNumber            String        @unique
+  status                 OrderStatus   @default(ORDER_CREATED)
+  fabric                 String
+  quantity               Int?
+  dueDate                String
+  width                  Float?
+  height                 Float?
+  gusset                 Float?
+  zip                    String
+  color                  String
+  handle                 String
+  print                  String
+  notes                  String?
+  customerName           String
+  customerPhone          String
+  customerAlternatePhone String?
+  customerAddress        String
+  customerCourierType    String
+  customerCourierNotes   String?
+  createdAt              DateTime      @default(now())
+  updatedAt              DateTime      @updatedAt
+  designs                OrderDesign[]
+
+  @@map("orders")
+}
+
+model OrderDesign {
+  id           String   @id @default(uuid())
+  orderId      String
+  sortOrder    Int
+  fileName     String?
+  notes        String?
+  originalName String?
+  storedName   String?
+  mimeType     String?
+  size         Int?
+  path         String?
+  url          String?
+  createdAt    DateTime @default(now())
+  order        Order    @relation(fields: [orderId], references: [id], onDelete: Cascade)
+
+  @@index([orderId])
+  @@map("order_designs")
 }

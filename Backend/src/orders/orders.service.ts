@@ -1,9 +1,11 @@
 import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
-import { mkdir, readFile, rm, writeFile } from 'node:fs/promises';
-import { extname, join } from 'node:path';
+import { OrderStatus, type Order, type OrderDesign } from '@prisma/client';
+import { mkdir, rm, writeFile } from 'node:fs/promises';
 import { randomUUID } from 'node:crypto';
+import { extname, join } from 'node:path';
 
-type OrderStatus = 'DRAFT' | 'ORDER_CREATED' | 'IN_PROGRESS' | 'COMPLETE';
+import { PrismaService } from '../prisma/prisma.service';
+
 type DashboardOrderStatus = 'Ready to pick' | 'In progress' | 'Complete';
 
 export interface UploadedOrderFile {
@@ -44,8 +46,8 @@ interface IncomingOrder {
 }
 
 export interface StoredDesign {
-  fileName: string;
-  notes: string;
+  fileName: string | null;
+  notes: string | null;
   uploadedFile: {
     originalName: string;
     storedName: string;
@@ -66,109 +68,274 @@ export interface StoredOrder {
   designs: StoredDesign[];
 }
 
+type OrderWithDesigns = Order & { designs: OrderDesign[] };
+
 @Injectable()
 export class OrdersService {
-  private readonly storageRoot = join(process.cwd(), 'storage', 'orders');
   private readonly uploadsRoot = join(process.cwd(), 'uploads', 'orders');
-  private readonly ordersFile = join(this.storageRoot, 'orders.json');
+
+  constructor(private readonly prisma: PrismaService) {}
 
   async create(rawOrder: string, files: UploadedOrderFile[]): Promise<StoredOrder> {
     const order = this.parseOrder(rawOrder);
     const id = `ord_${randomUUID()}`;
-    const createdAt = new Date().toISOString();
-    const orderUploadRoot = join(this.uploadsRoot, id);
     const fileByDesignIndex = this.mapFilesByDesignIndex(files);
-    const existingOrders = await this.readOrders();
-    const orderNumber = this.createNextOrderNumber(existingOrders);
+    const orderNumber = await this.createNextOrderNumber();
 
-    await mkdir(orderUploadRoot, { recursive: true });
+    const designs = await this.storeDesigns(order, id, fileByDesignIndex);
+    const createdOrder = await this.prisma.order.create({
+      data: {
+        id,
+        orderNumber,
+        status: OrderStatus.ORDER_CREATED,
+        ...this.toOrderData(order),
+        designs: {
+          create: designs.map((design, index) => this.toDesignData(design, index)),
+        },
+      },
+      include: {
+        designs: {
+          orderBy: {
+            sortOrder: 'asc',
+          },
+        },
+      },
+    });
 
-    const designs = await this.storeDesigns(order, id, orderUploadRoot, fileByDesignIndex);
-
-    const storedOrder: StoredOrder = {
-      id,
-      orderNumber,
-      status: 'ORDER_CREATED',
-      createdAt,
-      bag: order.bag,
-      customer: order.customer,
-      designs,
-    };
-
-    await this.writeOrders([storedOrder, ...existingOrders]);
-
-    return storedOrder;
+    return this.toStoredOrder(createdOrder);
   }
 
   async update(id: string, rawOrder: string, files: UploadedOrderFile[]): Promise<StoredOrder> {
     const order = this.parseOrder(rawOrder);
-    const orders = await this.readOrders();
-    const orderIndex = orders.findIndex((candidate) => candidate.id === id);
+    const existingOrder = await this.prisma.order.findUnique({
+      where: {
+        id,
+      },
+    });
 
-    if (orderIndex === -1) {
+    if (!existingOrder) {
       throw new NotFoundException('Order not found.');
     }
 
-    const existingOrder = orders[orderIndex];
-    const orderUploadRoot = join(this.uploadsRoot, id);
     const fileByDesignIndex = this.mapFilesByDesignIndex(files);
 
-    await mkdir(orderUploadRoot, { recursive: true });
+    const designs = await this.storeDesigns(order, id, fileByDesignIndex);
+    const updatedOrder = await this.prisma.$transaction(async (prisma) => {
+      await prisma.orderDesign.deleteMany({
+        where: {
+          orderId: id,
+        },
+      });
 
-    const updatedOrder: StoredOrder = {
-      ...existingOrder,
-      status: 'ORDER_CREATED',
-      createdAt: new Date().toISOString(),
-      bag: order.bag,
-      customer: order.customer,
-      designs: await this.storeDesigns(order, id, orderUploadRoot, fileByDesignIndex),
-    };
-    const updatedOrders = [...orders];
-    updatedOrders[orderIndex] = updatedOrder;
+      return prisma.order.update({
+        where: {
+          id,
+        },
+        data: {
+          status: OrderStatus.ORDER_CREATED,
+          ...this.toOrderData(order),
+          designs: {
+            create: designs.map((design, index) => this.toDesignData(design, index)),
+          },
+        },
+        include: {
+          designs: {
+            orderBy: {
+              sortOrder: 'asc',
+            },
+          },
+        },
+      });
+    });
 
-    await this.writeOrders(updatedOrders);
-
-    return updatedOrder;
+    return this.toStoredOrder(updatedOrder);
   }
 
   async findAllForDashboard() {
-    const orders = await this.readOrders();
+    const orders = await this.prisma.order.findMany({
+      orderBy: {
+        updatedAt: 'desc',
+      },
+    });
 
     return orders.map((order) => ({
       id: order.id,
       orderNumber: order.orderNumber,
-      type: order.bag.fabric,
-      quantity: order.bag.quantity ?? null,
-      size: `${order.bag.width ?? 0}w x ${order.bag.height ?? 0}h x ${order.bag.gusset ?? 0}g`,
-      updatedDate: order.createdAt,
+      type: order.fabric,
+      quantity: order.quantity ?? null,
+      size: `${order.width ?? 0}w x ${order.height ?? 0}h x ${order.gusset ?? 0}g`,
+      updatedDate: order.updatedAt.toISOString(),
       status: this.toDashboardStatus(order.status),
-      dueDate: order.bag.dueDate,
+      dueDate: order.dueDate,
     }));
   }
 
   async findOne(id: string) {
-    const orders = await this.readOrders();
-    const order = orders.find((candidate) => candidate.id === id);
+    const order = await this.prisma.order.findUnique({
+      where: {
+        id,
+      },
+      include: {
+        designs: {
+          orderBy: {
+            sortOrder: 'asc',
+          },
+        },
+      },
+    });
 
     if (!order) {
       throw new NotFoundException('Order not found.');
     }
 
     return {
+      ...this.toStoredOrder(order),
+      status: this.toDashboardStatus(order.status),
+      updatedDate: order.updatedAt.toISOString(),
+    };
+  }
+
+  async updateStatus(id: string, dashboardStatus: string) {
+    const status = this.toStoredStatus(dashboardStatus);
+
+    try {
+      const updatedOrder = await this.prisma.order.update({
+        where: {
+          id,
+        },
+        data: {
+          status,
+        },
+      });
+
+      return {
+        id: updatedOrder.id,
+        orderNumber: updatedOrder.orderNumber,
+        status: this.toDashboardStatus(updatedOrder.status),
+      };
+    } catch {
+      throw new NotFoundException('Order not found.');
+    }
+  }
+
+  async delete(id: string) {
+    try {
+      const order = await this.prisma.order.delete({
+        where: {
+          id,
+        },
+      });
+
+      await rm(join(this.uploadsRoot, id), { recursive: true, force: true });
+
+      return {
+        id: order.id,
+        orderNumber: order.orderNumber,
+        deleted: true,
+      };
+    } catch {
+      throw new NotFoundException('Order not found.');
+    }
+  }
+
+  private parseOrder(rawOrder: string): IncomingOrder {
+    try {
+      const order = JSON.parse(rawOrder) as IncomingOrder;
+
+      if (!order.bag || !Array.isArray(order.designs) || !order.customer) {
+        throw new Error('Invalid order shape.');
+      }
+
+      return order;
+    } catch {
+      throw new BadRequestException('Order payload must be valid JSON.');
+    }
+  }
+
+  private toOrderData(order: IncomingOrder) {
+    return {
+      fabric: order.bag.fabric,
+      quantity: order.bag.quantity,
+      dueDate: order.bag.dueDate,
+      width: order.bag.width,
+      height: order.bag.height,
+      gusset: order.bag.gusset,
+      zip: order.bag.zip,
+      color: order.bag.color,
+      handle: order.bag.handle,
+      print: order.bag.print,
+      notes: order.bag.notes ?? null,
+      customerName: order.customer.name,
+      customerPhone: order.customer.phone,
+      customerAlternatePhone: order.customer.alternatePhone || null,
+      customerAddress: order.customer.address,
+      customerCourierType: order.customer.courierType,
+      customerCourierNotes: order.customer.courierNotes || null,
+    };
+  }
+
+  private toDesignData(design: StoredDesign, index: number) {
+    return {
+      sortOrder: index,
+      fileName: design.fileName,
+      notes: design.notes,
+      originalName: design.uploadedFile?.originalName ?? null,
+      storedName: design.uploadedFile?.storedName ?? null,
+      mimeType: design.uploadedFile?.mimeType ?? null,
+      size: design.uploadedFile?.size ?? null,
+      path: design.uploadedFile?.path ?? null,
+      url: design.uploadedFile?.url ?? null,
+    };
+  }
+
+  private toStoredOrder(order: OrderWithDesigns): StoredOrder {
+    return {
       id: order.id,
       orderNumber: order.orderNumber,
-      status: this.toDashboardStatus(order.status),
-      updatedDate: order.createdAt,
-      bag: order.bag,
-      customer: order.customer,
-      designs: order.designs,
+      status: order.status,
+      createdAt: order.updatedAt.toISOString(),
+      bag: {
+        fabric: order.fabric,
+        quantity: order.quantity,
+        dueDate: order.dueDate,
+        width: order.width,
+        height: order.height,
+        gusset: order.gusset,
+        zip: order.zip,
+        color: order.color,
+        handle: order.handle,
+        print: order.print,
+        notes: order.notes,
+      },
+      customer: {
+        name: order.customerName,
+        phone: order.customerPhone,
+        alternatePhone: order.customerAlternatePhone ?? '',
+        address: order.customerAddress,
+        courierType: order.customerCourierType,
+        courierNotes: order.customerCourierNotes ?? '',
+      },
+      designs: order.designs.map((design) => ({
+        fileName: design.fileName,
+        notes: design.notes,
+        uploadedFile:
+          design.originalName && design.storedName && design.mimeType && design.path && design.url
+            ? {
+                originalName: design.originalName,
+                storedName: design.storedName,
+                mimeType: design.mimeType,
+                size: design.size ?? 0,
+                path: design.path,
+                url: design.url,
+              }
+            : null,
+      })),
     };
   }
 
   private async storeDesigns(
     order: IncomingOrder,
     id: string,
-    orderUploadRoot: string,
     fileByDesignIndex: Map<number, UploadedOrderFile>,
   ): Promise<StoredDesign[]> {
     return Promise.all(
@@ -185,10 +352,11 @@ export class OrdersService {
 
         const extension = extname(file.originalname);
         const storedName = `design-${index + 1}-${randomUUID()}${extension}`;
-        const absolutePath = join(orderUploadRoot, storedName);
+        const orderUploadRoot = join(this.uploadsRoot, id);
         const relativePath = `/uploads/orders/${id}/${storedName}`;
 
-        await writeFile(absolutePath, file.buffer);
+        await mkdir(orderUploadRoot, { recursive: true });
+        await writeFile(join(orderUploadRoot, storedName), file.buffer);
 
         return {
           fileName: design.fileName || file.originalname,
@@ -206,64 +374,6 @@ export class OrdersService {
     );
   }
 
-
-  async updateStatus(id: string, dashboardStatus: string) {
-    const status = this.toStoredStatus(dashboardStatus);
-    const orders = await this.readOrders();
-    const orderIndex = orders.findIndex((order) => order.id === id);
-
-    if (orderIndex === -1) {
-      throw new NotFoundException('Order not found.');
-    }
-
-    const updatedOrder: StoredOrder = {
-      ...orders[orderIndex],
-      status,
-    };
-    const updatedOrders = [...orders];
-    updatedOrders[orderIndex] = updatedOrder;
-
-    await this.writeOrders(updatedOrders);
-
-    return {
-      id: updatedOrder.id,
-      orderNumber: updatedOrder.orderNumber,
-      status: this.toDashboardStatus(updatedOrder.status),
-    };
-  }
-
-  async delete(id: string) {
-    const orders = await this.readOrders();
-    const order = orders.find((candidate) => candidate.id === id);
-
-    if (!order) {
-      throw new NotFoundException('Order not found.');
-    }
-
-    await this.writeOrders(orders.filter((candidate) => candidate.id !== id));
-    await rm(join(this.uploadsRoot, id), { recursive: true, force: true });
-
-    return {
-      id: order.id,
-      orderNumber: order.orderNumber,
-      deleted: true,
-    };
-  }
-
-  private parseOrder(rawOrder: string): IncomingOrder {
-    try {
-      const order = JSON.parse(rawOrder) as IncomingOrder;
-
-      if (!order.bag || !Array.isArray(order.designs) || !order.customer) {
-        throw new Error('Invalid order shape.');
-      }
-
-      return order;
-    } catch {
-      throw new BadRequestException('Order payload must be valid JSON.');
-    }
-  }
-
   private mapFilesByDesignIndex(files: UploadedOrderFile[]) {
     const fileByDesignIndex = new Map<number, UploadedOrderFile>();
 
@@ -278,21 +388,12 @@ export class OrdersService {
     return fileByDesignIndex;
   }
 
-  private async readOrders(): Promise<StoredOrder[]> {
-    try {
-      const rawOrders = await readFile(this.ordersFile, 'utf8');
-      return this.withOrderNumbers(JSON.parse(rawOrders) as StoredOrder[]);
-    } catch {
-      return [];
-    }
-  }
-
-  private async writeOrders(orders: StoredOrder[]) {
-    await mkdir(this.storageRoot, { recursive: true });
-    await writeFile(this.ordersFile, JSON.stringify(orders, null, 2));
-  }
-
-  private createNextOrderNumber(orders: StoredOrder[]): string {
+  private async createNextOrderNumber(): Promise<string> {
+    const orders = await this.prisma.order.findMany({
+      select: {
+        orderNumber: true,
+      },
+    });
     const latestNumber = orders.reduce((latest, order) => {
       const match = /^C9-(\d+)$/.exec(order.orderNumber ?? '');
       return match ? Math.max(latest, Number(match[1])) : latest;
@@ -301,18 +402,11 @@ export class OrdersService {
     return `C9-${latestNumber + 1}`;
   }
 
-  private withOrderNumbers(orders: StoredOrder[]): StoredOrder[] {
-    return orders.map((order, index) => ({
-      ...order,
-      orderNumber: order.orderNumber ?? `C9-${1054 + orders.length - index}`,
-    }));
-  }
-
   private toStoredStatus(status: string): OrderStatus {
     const statuses: Record<DashboardOrderStatus, OrderStatus> = {
-      'Ready to pick': 'ORDER_CREATED',
-      'In progress': 'IN_PROGRESS',
-      Complete: 'COMPLETE',
+      'Ready to pick': OrderStatus.ORDER_CREATED,
+      'In progress': OrderStatus.IN_PROGRESS,
+      Complete: OrderStatus.COMPLETE,
     };
     const storedStatus = statuses[status as DashboardOrderStatus];
 
