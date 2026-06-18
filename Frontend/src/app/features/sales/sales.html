@@ -1,0 +1,268 @@
+<section class="sales-page">
+  <header class="sales-page__header">
+    <div>
+      <p class="sales-page__eyebrow">Sales</p>
+      <h1>{{ isEditMode ? 'Edit order' : 'Create new order' }}</h1>
+      @if (isEditMode && orderNumber) {
+        <p class="sales-page__subtitle">{{ orderNumber }}</p>
+      }
+    </div>
+
+    @if (isEditMode) {
+      <button
+        type="button"
+        class="delete-order-button"
+        [disabled]="isDeleting"
+        (click)="requestDeleteOrder()"
+      >
+        <svg viewBox="0 0 24 24" aria-hidden="true">
+          <path d="M4 7h16M10 11v6M14 11v6M6 7l1 14h10l1-14M9 7V4h6v3" />
+        </svg>
+        <span>{{ isDeleting ? 'Deleting...' : 'Delete order' }}</span>
+      </button>
+    }
+  </header>
+
+  <ol class="stepper" aria-label="Order creation steps">
+    <li [class.stepper__item--active]="currentStep === 1" [class.stepper__item--done]="currentStep > 1">
+      <span>1</span>
+      <strong>Bag details</strong>
+    </li>
+    <li [class.stepper__item--active]="currentStep === 2" [class.stepper__item--done]="currentStep > 2">
+      <span>2</span>
+      <strong>Designs</strong>
+    </li>
+    <li [class.stepper__item--active]="currentStep === 3">
+      <span>3</span>
+      <strong>Customer</strong>
+    </li>
+  </ol>
+
+  <form class="order-form" [formGroup]="orderForm" (ngSubmit)="createOrder()">
+    <fieldset class="form-step" formGroupName="bag" *ngIf="currentStep === 1">
+      <legend class="mb-3">Bag details</legend>
+
+      <label class="mt-2">
+        <span class="required-label">Fabric</span>
+        <select formControlName="fabric">
+          <option value="" disabled>Select fabric</option>
+          <option *ngFor="let fabric of fabrics" [value]="fabric">{{ fabric }}</option>
+        </select>
+      </label>
+
+      <label>
+        <span class="required-label">Quantity</span>
+        <input type="number" formControlName="quantity" min="1" />
+      </label>
+      
+      <label>
+        <span class="required-label">Due date</span>
+        <input type="date" formControlName="dueDate" />
+      </label>
+
+      <div class="dimension-field">
+        <span class="">Dimension</span>
+        <div class="dimension-field__inputs">
+          <label>
+            <span class="required-label">Width</span>
+            <input type="number" formControlName="width" min="0" />
+          </label>
+          <label>
+            <span class="required-label">Height</span>
+            <input type="number" formControlName="height" min="0" />
+          </label>
+          <label>
+            <span class="required-label">Gusset</span>
+            <input type="number" formControlName="gusset" min="0" />
+          </label>
+        </div>
+      </div>
+
+      <label>
+        <span class="required-label">Zip</span>
+        <select formControlName="zip">
+          <option value="" disabled>Select zip</option>
+          <option *ngFor="let option of zipOptions" [value]="option">{{ option }}</option>
+        </select>
+      </label>
+
+      <label>
+        <span class="required-label">Color</span>
+        <select formControlName="color">
+          <option value="" disabled>Select color</option>
+          <option *ngFor="let color of colors" [value]="color">{{ color }}</option>
+        </select>
+      </label>
+
+      <label>
+        <span class="required-label">Handle</span>
+        <select formControlName="handle">
+          <option value="" disabled>Select handle</option>
+          <option *ngFor="let handle of handles" [value]="handle">{{ handle }}</option>
+        </select>
+      </label>
+
+      <label>
+        <span class="required-label">Print</span>
+        <select formControlName="print">
+          <option value="" disabled>Select print</option>
+          <option *ngFor="let print of prints" [value]="print">{{ print }}</option>
+        </select>
+      </label>
+
+      <label class="order-form__wide">
+        <span>Notes</span>
+        <textarea rows="3" formControlName="notes"></textarea>
+      </label>
+    </fieldset>
+
+    <fieldset class="form-step" formArrayName="designs" *ngIf="currentStep === 2">
+      <div class="form-step__title-row">
+        <legend>Design uploads</legend>
+        <button type="button" class="secondary-button" (click)="addDesign()">Add design</button>
+      </div>
+
+      <div class="design-list">
+        <div class="design-card" *ngFor="let design of designs.controls; let index = index" [formGroupName]="index">
+          <div class="upload-field">
+            <label>
+              <span>Design file</span>
+              <input type="file" accept="image/*,.pdf" (change)="updateDesignFile($event, index)" />
+            </label>
+
+            <div
+              class="design-preview"
+              [class.design-preview--empty]="!design.value.fileName"
+              [class.design-preview--clickable]="design.value.previewUrl"
+              (click)="openPreview(index)"
+            >
+              @if (design.value.previewUrl) {
+                <button
+                  type="button"
+                  class="design-preview__remove"
+                  aria-label="Remove selected design"
+                  (click)="clearDesignFile(index); $event.stopPropagation()"
+                >
+                  <svg viewBox="0 0 24 24" aria-hidden="true">
+                    <path d="M6 6l12 12M18 6 6 18" />
+                  </svg>
+                </button>
+                <img [src]="design.value.previewUrl" [alt]="design.value.fileName || 'Design preview'" />
+              } @else {
+                <div class="design-preview__placeholder">
+                  <svg viewBox="0 0 24 24" aria-hidden="true">
+                    <path d="M4 5h16v14H4zM8 13l2.5-3 3 4 2-2.5L20 17" />
+                  </svg>
+                  <span>{{ design.value.fileName ? 'Preview unavailable' : 'No file selected' }}</span>
+                </div>
+              }
+            </div>
+
+            <span class="design-file-name">{{ design.value.fileName || 'No file selected' }}</span>
+          </div>
+
+          <label>
+            <span>Notes</span>
+            <textarea rows="3" formControlName="notes"></textarea>
+          </label>
+
+          <div class="design-card__footer">
+            <span>{{ design.value.previewUrl ? 'Click image to expand' : 'Upload an image to preview it here' }}</span>
+            <button type="button" class="text-button" (click)="removeDesign(index)">Remove</button>
+          </div>
+        </div>
+      </div>
+    </fieldset>
+
+    <fieldset class="form-step" formGroupName="customer" *ngIf="currentStep === 3">
+      <legend>Customer details</legend>
+
+      <label>
+        <span>Customer name</span>
+        <input type="text" formControlName="name" autocomplete="name" />
+      </label>
+
+      <label>
+        <span>Phone number</span>
+        <input type="tel" formControlName="phone" autocomplete="tel" />
+      </label>
+
+      <label>
+        <span>Alternate phone number</span>
+        <input type="tel" formControlName="alternatePhone" />
+      </label>
+
+      <label>
+        <span>Courier type</span>
+        <select formControlName="courierType">
+          <option value="">Select courier</option>
+          <option *ngFor="let courierType of courierTypes" [value]="courierType">{{ courierType }}</option>
+        </select>
+      </label>
+
+      <label class="order-form__wide">
+        <span>Customer address</span>
+        <textarea rows="4" formControlName="address"></textarea>
+      </label>
+
+      <label class="order-form__wide" *ngIf="showCourierNotes">
+        <span>Courier notes</span>
+        <textarea rows="3" formControlName="courierNotes"></textarea>
+      </label>
+    </fieldset>
+
+    <div class="order-form__actions">
+      <button type="button" class="secondary-button" (click)="goBack()" *ngIf="currentStep > 1">
+        Back
+      </button>
+      <button type="button" *ngIf="currentStep < 3" (click)="goNext()">Next</button>
+      <button type="submit" *ngIf="currentStep === 3" [disabled]="isSubmitting">
+        @if (isSubmitting) {
+          {{ isEditMode ? 'Updating...' : 'Creating...' }}
+        } @else {
+          {{ isEditMode ? 'Update order' : 'Create order' }}
+        }
+      </button>
+    </div>
+  </form>
+
+  @if (previewDialog(); as preview) {
+    <div class="preview-modal" role="dialog" aria-modal="true" [attr.aria-label]="preview.name">
+      <div class="preview-modal__content">
+        <header class="preview-modal__header">
+          <div>
+            <span>Design preview</span>
+            <strong>{{ preview.name }}</strong>
+          </div>
+          <button type="button" class="preview-modal__close" aria-label="Close preview" (click)="closePreview()">
+            <svg viewBox="0 0 24 24" aria-hidden="true">
+              <path d="M6 6l12 12M18 6 6 18" />
+            </svg>
+          </button>
+        </header>
+        <img [src]="preview.url" [alt]="preview.name" />
+      </div>
+    </div>
+  }
+
+  @if (showDeleteConfirmation()) {
+    <div class="confirm-modal" role="dialog" aria-modal="true" aria-labelledby="delete-order-title">
+      <div class="confirm-modal__content">
+        <div>
+          <span class="confirm-modal__eyebrow">Confirm delete</span>
+          <h2 id="delete-order-title">Delete {{ orderNumber || 'this order' }}?</h2>
+          <p>This will remove the order record and its uploaded design files from the backend.</p>
+        </div>
+        <div class="confirm-modal__actions">
+          <button type="button" class="secondary-button" [disabled]="isDeleting" (click)="cancelDeleteOrder()">
+            Cancel
+          </button>
+          <button type="button" class="danger-button" [disabled]="isDeleting" (click)="confirmDeleteOrder()">
+            {{ isDeleting ? 'Deleting...' : 'Yes, delete' }}
+          </button>
+        </div>
+      </div>
+    </div>
+  }
+
+</section>

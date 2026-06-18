@@ -1,12 +1,12 @@
 import { CommonModule } from '@angular/common';
-import { Component, OnInit, inject, signal } from '@angular/core';
-import { FormArray, FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
-import { ActivatedRoute, Router } from '@angular/router';
+import { Component, OnInit, computed, inject, signal } from '@angular/core';
+import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
 import { ToastrService } from 'ngx-toastr';
 
-import { OrderDetails, OrderService, UploadedOrderFile } from '../../core/orders/order.service';
+import { AuthService } from '../../core/auth/auth.service';
+import { ManagedUser, UserRole, UserService } from '../../core/users/user.service';
 
-type WizardStep = 1 | 2 | 3;
+type UserSort = 'role' | 'name';
 
 @Component({
   selector: 'app-admin',
@@ -16,294 +16,312 @@ type WizardStep = 1 | 2 | 3;
   styleUrl: './admin.scss',
 })
 export class Admin implements OnInit {
-
-  constructor(
-    private router : Router,
-    private route: ActivatedRoute,
-    private toastrService: ToastrService,
-    private orderService: OrderService
-
-  ){}
-
+  private readonly authService = inject(AuthService);
   private readonly formBuilder = inject(FormBuilder);
+  private readonly toastrService = inject(ToastrService);
+  private readonly userService = inject(UserService);
 
-  protected readonly fabrics = ['Jute', 'Juco'];
-  protected readonly zipOptions = ['None', 'Zip', 'Velcro', 'Button'];
-  protected readonly colors = ['White', 'Natural', 'Combination'];
-  protected readonly handles = ['Natural tape', 'White tape', 'Natural rope', 'White rope'];
-  protected readonly prints = ['Plain', 'Single Print', 'Double Print', 'Full Print'];
-  protected readonly courierTypes = ['Professional couriers', 'APSRTC', 'Self pickup', 'Others'];
+  protected readonly roles: UserRole[] = [
+    'SUPER_ADMIN',
+    'ADMIN',
+    'MANAGER',
+    'SALES',
+    'PRODUCTION',
+    'DISPATCH',
+    'CUSTOMER',
+  ];
 
-  protected currentStep: WizardStep = 1;
-  protected isSubmitting = false;
-  protected isDeleting = false;
-  protected readonly previewDialog = signal<{ url: string; name: string } | null>(null);
-  protected readonly showDeleteConfirmation = signal(false);
-  protected orderNumber = '';
-  private editOrderId: string | null = null;
+  protected readonly sortBy = signal<UserSort>('role');
+  protected readonly users = signal<ManagedUser[]>([]);
+  protected readonly isLoading = signal(false);
+  protected readonly isSaving = signal(false);
+  protected readonly deletingUserId = signal<string | null>(null);
+  protected readonly editingUser = signal<ManagedUser | null>(null);
+  protected readonly userPendingDelete = signal<ManagedUser | null>(null);
+  protected readonly currentUserId = this.authService.userId;
 
-  protected readonly orderForm = this.formBuilder.group({
-    bag: this.formBuilder.group({
-      fabric: ['', Validators.required],
-      quantity: [null as number | null, Validators.required],
-      dueDate: ['', Validators.required],
-      width: [null as number | null, Validators.required],
-      height: [null as number | null, Validators.required],
-      gusset: [null as number | null, Validators.required],
-      zip: ['', Validators.required],
-      color: ['', Validators.required],
-      handle: ['', Validators.required],
-      print: ['', Validators.required],
-      notes: [''],
-    }),
-    designs: this.formBuilder.array([this.createDesignGroup()]),
-    customer: this.formBuilder.group({
-      name: [''],
-      phone: [''],
-      alternatePhone: [''],
-      address: [''],
-      courierType: [''],
-      courierNotes: [''],
-    }),
+  protected readonly sortedUsers = computed(() => {
+    const users = [...this.users()];
+    const sortBy = this.sortBy();
+
+    return users.sort((first, second) => {
+      const superAdminSort = this.getSuperAdminRank(first) - this.getSuperAdminRank(second);
+
+      if (superAdminSort !== 0) {
+        return superAdminSort;
+      }
+
+      if (sortBy === 'role') {
+        const roleSort = this.getRoleRank(first.role) - this.getRoleRank(second.role);
+
+        if (roleSort !== 0) {
+          return roleSort;
+        }
+      }
+
+      if (sortBy === 'name') {
+        const nameSort = this.getUserName(first).localeCompare(this.getUserName(second));
+
+        if (nameSort !== 0) {
+          return nameSort;
+        }
+      }
+
+      return first.email.localeCompare(second.email);
+    });
   });
 
-  protected get designs(): FormArray {
-    return this.orderForm.controls.designs;
+  protected readonly userForm = this.formBuilder.group({
+    email: ['', [Validators.required, Validators.email]],
+    name: [''],
+    password: ['', [Validators.required, Validators.minLength(6)]],
+    role: ['SALES' as UserRole, Validators.required],
+    isActive: [true],
+  });
+
+  ngOnInit(): void {
+    this.loadUsers();
   }
 
   protected get isEditMode(): boolean {
-    return Boolean(this.editOrderId);
+    return Boolean(this.editingUser());
   }
 
-  ngOnInit(): void {
-    this.editOrderId = this.route.snapshot.queryParamMap.get('orderId');
-
-    if (this.editOrderId) {
-      this.loadOrder(this.editOrderId);
-    }
+  protected get canShowPasswordField(): boolean {
+    const user = this.editingUser();
+    return !user || user.role !== 'SUPER_ADMIN' || user.id === this.currentUserId;
   }
 
-  protected get showCourierNotes(): boolean {
-    return this.orderForm.controls.customer.controls.courierType.value === 'Others';
+  protected get canSaveUser(): boolean {
+    const user = this.editingUser();
+    return !user || user.role !== 'SUPER_ADMIN' || user.id === this.currentUserId;
   }
 
-  protected goBack(): void {
-    if (this.currentStep > 1) {
-      this.currentStep = (this.currentStep - 1) as WizardStep;
-    }
+  protected startAddUser(): void {
+    this.editingUser.set(null);
+    this.userForm.reset({
+      email: '',
+      name: '',
+      password: '',
+      role: 'SALES',
+      isActive: true,
+    });
+    this.userForm.controls.password.setValidators([Validators.required, Validators.minLength(6)]);
+    this.userForm.controls.password.updateValueAndValidity();
+    this.setProfileControlsDisabled(false);
   }
 
-  protected goNext(): void {
-    if (this.currentStep === 1 && this.orderForm.controls.bag.invalid) {
-      this.orderForm.controls.bag.markAllAsTouched();
+  protected editUser(user: ManagedUser): void {
+    this.editingUser.set(user);
+    this.userForm.reset({
+      email: user.email,
+      name: user.name,
+      password: '',
+      role: user.role,
+      isActive: user.isActive,
+    });
+    this.userForm.controls.password.setValidators(
+      user.role === 'SUPER_ADMIN' && user.id === this.currentUserId
+        ? [Validators.minLength(6)]
+        : [Validators.minLength(6)],
+    );
+    this.userForm.controls.password.updateValueAndValidity();
+    this.setProfileControlsDisabled(user.role === 'SUPER_ADMIN', user.id === this.currentUserId);
+  }
+
+  protected saveUser(): void {
+    if (this.userForm.invalid || this.isSaving()) {
+      this.userForm.markAllAsTouched();
+      this.toastrService.error(this.getFormErrorMessage());
       return;
     }
 
-    if (this.currentStep < 3) {
-      this.currentStep = (this.currentStep + 1) as WizardStep;
-    }
-  }
+    const editingUser = this.editingUser();
+    const formValue = this.userForm.getRawValue();
+    this.isSaving.set(true);
 
-  protected addDesign(): void {
-    this.designs.push(this.createDesignGroup());
-  }
-
-  protected removeDesign(index: number): void {
-    this.designs.removeAt(index);
-  }
-
-  protected updateDesignFile(event: Event, index: number): void {
-    const input = event.target as HTMLInputElement;
-    const file = input.files?.[0] ?? null;
-    const previewUrl = file && file.type.startsWith('image/') ? URL.createObjectURL(file) : null;
-
-    this.designs.at(index).patchValue({
-      file,
-      fileName: file?.name ?? '',
-      previewUrl,
-      uploadedFile: null,
-    });
-  }
-
-  protected clearDesignFile(index: number): void {
-    this.designs.at(index).patchValue({
-      file: null,
-      fileName: '',
-      previewUrl: null,
-      uploadedFile: null,
-    });
-  }
-
-  protected openPreview(index: number): void {
-    const design = this.designs.at(index).value;
-
-    if (design.previewUrl) {
-      this.previewDialog.set({
-        url: design.previewUrl,
-        name: design.fileName || 'Design preview',
-      });
-    }
-  }
-
-  protected closePreview(): void {
-    this.previewDialog.set(null);
-  }
-
-  protected requestDeleteOrder(): void {
-    this.showDeleteConfirmation.set(true);
-  }
-
-  protected cancelDeleteOrder(): void {
-    this.showDeleteConfirmation.set(false);
-  }
-
-  protected confirmDeleteOrder(): void {
-    if (!this.editOrderId || this.isDeleting) {
-      return;
-    }
-
-    this.isDeleting = true;
-
-    this.orderService.deleteOrder(this.editOrderId).subscribe({
-      next: () => {
-        this.isDeleting = false;
-        this.showDeleteConfirmation.set(false);
-        this.toastrService.success('Order deleted successfully');
-        this.router.navigate(['/dashboard']);
-      },
-      error: () => {
-        this.isDeleting = false;
-        this.toastrService.error('Unable to delete order. Please try again.');
-      },
-    });
-  }
-
-  protected createOrder(): void {
-    if (this.orderForm.invalid || this.isSubmitting) {
-      this.orderForm.markAllAsTouched();
-      return;
-    }
-
-    this.isSubmitting = true;
-    const isEditMode = this.isEditMode;
-    const request = this.editOrderId
-      ? this.orderService.updateOrder(this.editOrderId, this.orderForm.getRawValue())
-      : this.orderService.createOrder(this.orderForm.getRawValue());
+    const request = editingUser
+      ? this.userService.updateUser(editingUser.id, {
+          email: formValue.email || editingUser.email,
+          name: formValue.name || this.createNameFromEmail(formValue.email || editingUser.email),
+          role: formValue.role || editingUser.role,
+          isActive: formValue.isActive ?? editingUser.isActive,
+          ...(formValue.password ? { password: formValue.password } : {}),
+        })
+      : this.userService.createUser({
+          email: formValue.email ?? '',
+          name: formValue.name?.trim() || undefined,
+          password: formValue.password ?? '',
+          role: formValue.role ?? 'SALES',
+        });
 
     request.subscribe({
       next: () => {
-        this.isSubmitting = false;
-        this.resetForm();
-        this.router.navigate(['/dashboard']);
-        this.toastrService.success(
-          isEditMode ? 'Order updated successfully' : 'Order created successfully',
-        );
+        this.isSaving.set(false);
+        this.toastrService.success(editingUser ? 'User updated successfully' : 'User added successfully');
+        this.startAddUser();
+        this.loadUsers();
       },
-      error: () => {
-        this.isSubmitting = false;
+      error: (error) => {
+        this.isSaving.set(false);
         this.toastrService.error(
-          this.isEditMode ? 'Unable to update order. Please try again.' : 'Unable to create order. Please try again.',
+          this.getErrorMessage(error, editingUser ? 'Unable to update user.' : 'Unable to add user.'),
         );
       },
     });
   }
 
-  private loadOrder(orderId: string): void {
-    this.orderService.getOrder(orderId).subscribe({
-      next: (order) => this.patchOrder(order),
-      error: () => {
-        this.toastrService.error('Unable to load order for editing.');
-        this.router.navigate(['/dashboard']);
-      },
-    });
-  }
-
-  private patchOrder(order: OrderDetails): void {
-    this.orderNumber = order.orderNumber;
-    this.designs.clear();
-
-    order.designs.forEach((design) => {
-      this.designs.push(
-        this.createDesignGroup({
-          fileName: design.fileName ?? design.uploadedFile?.originalName ?? '',
-          notes: design.notes ?? '',
-          previewUrl: this.getPreviewUrl(design.uploadedFile),
-          uploadedFile: design.uploadedFile,
-        }),
-      );
-    });
-
-    if (this.designs.length === 0) {
-      this.designs.push(this.createDesignGroup());
+  protected requestDeleteUser(user: ManagedUser): void {
+    if (user.role === 'SUPER_ADMIN') {
+      return;
     }
 
-    this.orderForm.patchValue({
-      bag: {
-        fabric: order.bag.fabric ?? '',
-        quantity: order.bag.quantity ?? null,
-        dueDate: order.bag.dueDate ?? '',
-        width: order.bag.width ?? null,
-        height: order.bag.height ?? null,
-        gusset: order.bag.gusset ?? null,
-        zip: order.bag.zip ?? '',
-        color: order.bag.color ?? '',
-        handle: order.bag.handle ?? '',
-        print: order.bag.print ?? '',
-        notes: order.bag.notes ?? '',
+    this.userPendingDelete.set(user);
+  }
+
+  protected cancelDeleteUser(): void {
+    this.userPendingDelete.set(null);
+  }
+
+  protected confirmDeleteUser(): void {
+    const user = this.userPendingDelete();
+
+    if (!user || this.deletingUserId()) {
+      return;
+    }
+
+    this.deletingUserId.set(user.id);
+
+    this.userService.deleteUser(user.id).subscribe({
+      next: () => {
+        this.deletingUserId.set(null);
+        this.userPendingDelete.set(null);
+        this.toastrService.success('User deleted successfully');
+        if (this.editingUser()?.id === user.id) {
+          this.startAddUser();
+        }
+        this.loadUsers();
       },
-      customer: order.customer,
+      error: (error) => {
+        this.deletingUserId.set(null);
+        this.toastrService.error(this.getErrorMessage(error, 'Unable to delete user.'));
+      },
     });
   }
 
-  private getPreviewUrl(uploadedFile: UploadedOrderFile | null): string | null {
-    return uploadedFile?.mimeType.startsWith('image/')
-      ? this.orderService.getUploadedFileUrl(uploadedFile)
-      : null;
+  protected changeSort(event: Event): void {
+    this.sortBy.set((event.target as HTMLSelectElement).value as UserSort);
   }
 
-  private createDesignGroup(value?: {
-    fileName?: string;
-    notes?: string;
-    previewUrl?: string | null;
-    uploadedFile?: UploadedOrderFile | null;
-  }) {
-    return this.formBuilder.group({
-      file: [null as File | null],
-      fileName: [value?.fileName ?? ''],
-      notes: [value?.notes ?? ''],
-      previewUrl: [value?.previewUrl ?? null as string | null],
-      uploadedFile: [value?.uploadedFile ?? null as UploadedOrderFile | null],
+  protected canDeleteUser(user: ManagedUser): boolean {
+    return user.role !== 'SUPER_ADMIN';
+  }
+
+  protected canEditUser(user: ManagedUser): boolean {
+    return user.role !== 'SUPER_ADMIN' || user.id === this.currentUserId;
+  }
+
+  protected formatRole(role: string): string {
+    return role.replaceAll('_', ' ').toLowerCase().replace(/\b\w/g, (letter) => letter.toUpperCase());
+  }
+
+  protected formatDate(date: string): string {
+    return new Date(date).toLocaleDateString('en-GB', {
+      day: '2-digit',
+      month: 'short',
+      year: 'numeric',
     });
   }
 
-  private resetForm(): void {
-    this.editOrderId = null;
-    this.orderNumber = '';
-    this.designs.clear();
-    this.designs.push(this.createDesignGroup());
-    this.currentStep = 1;
-    this.orderForm.reset({
-      bag: {
-        fabric: '',
-        quantity: null,
-        dueDate: '',
-        width: null,
-        height: null,
-        gusset: null,
-        zip: '',
-        color: '',
-        handle: '',
-        print: '',
-        notes: '',
+  private loadUsers(): void {
+    this.isLoading.set(true);
+
+    this.userService.getUsers().subscribe({
+      next: (users) => {
+        this.users.set(users);
+        this.isLoading.set(false);
       },
-      customer: {
-        name: '',
-        phone: '',
-        alternatePhone: '',
-        address: '',
-        courierType: '',
-        courierNotes: '',
+      error: (error) => {
+        this.users.set([]);
+        this.isLoading.set(false);
+        this.toastrService.error(this.getErrorMessage(error, 'Unable to load users.'));
       },
     });
+  }
+
+  private setProfileControlsDisabled(disabled: boolean, isCurrentSuperAdmin = false): void {
+    const controls = [
+      this.userForm.controls.email,
+      this.userForm.controls.role,
+      this.userForm.controls.isActive,
+    ];
+
+    controls.forEach((control) => {
+      if (disabled) {
+        control.disable();
+      } else {
+        control.enable();
+      }
+    });
+
+    if (isCurrentSuperAdmin) {
+      this.userForm.controls.name.enable();
+    } else if (disabled) {
+      this.userForm.controls.name.disable();
+    } else {
+      this.userForm.controls.name.enable();
+    }
+  }
+
+  private getSuperAdminRank(user: ManagedUser): number {
+    return user.role === 'SUPER_ADMIN' ? 0 : 1;
+  }
+
+  private getRoleRank(role: UserRole): number {
+    return this.roles.indexOf(role);
+  }
+
+  private getUserName(user: ManagedUser): string {
+    return (user.name || this.createNameFromEmail(user.email)).toLowerCase();
+  }
+
+  private createNameFromEmail(email: string): string {
+    return email
+      .split('@')[0]
+      .replace(/[._-]+/g, ' ')
+      .replace(/\b\w/g, (letter) => letter.toUpperCase());
+  }
+
+  private getErrorMessage(error: unknown, fallback: string): string {
+    const responseMessage = (error as { error?: { message?: string | string[] } })?.error?.message;
+
+    if (Array.isArray(responseMessage)) {
+      return responseMessage[0] ?? fallback;
+    }
+
+    return responseMessage ?? fallback;
+  }
+
+  private getFormErrorMessage(): string {
+    const email = this.userForm.controls.email;
+    const password = this.userForm.controls.password;
+
+    if (email.hasError('required')) {
+      return 'Email is required.';
+    }
+
+    if (email.hasError('email')) {
+      return 'Enter a valid email address.';
+    }
+
+    if (password.hasError('required')) {
+      return 'Password is required.';
+    }
+
+    if (password.hasError('minlength')) {
+      return 'Password must be at least 6 characters.';
+    }
+
+    return 'Please check the user details and try again.';
   }
 }

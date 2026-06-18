@@ -1,5 +1,6 @@
 import { Routes } from '@angular/router';
 
+import { adminGuard } from './core/auth/admin.guard';
 import { authGuard } from './core/auth/auth.guard';
 
 export const routes: Routes = [
@@ -21,9 +22,16 @@ export const routes: Routes = [
         title: 'Dashboard | Cloud9 Creatives',
       },
       {
+        path: 'sales',
+        loadComponent: () =>
+          import('./features/sales/sales').then((component) => component.Sales),
+        title: 'Sales | Cloud9 Creatives',
+      },
+      {
         path: 'admin',
         loadComponent: () =>
           import('./features/admin/admin').then((component) => component.Admin),
+        canActivate: [adminGuard],
         title: 'Admin | Cloud9 Creatives',
       },
       {

@@ -15,6 +15,8 @@ export class Header {
 
   protected readonly userEmail = this.authService.userEmail;
   protected readonly profileInitial = this.authService.profileInitial;
+  protected readonly canManageUsers = this.authService.canManageUsers;
+  protected readonly canAccessSales = this.authService.canAccessSales;
 
   protected logout(): void {
     this.authService.logout();

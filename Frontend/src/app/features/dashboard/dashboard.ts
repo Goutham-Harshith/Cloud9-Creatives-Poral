@@ -2,6 +2,7 @@ import { Component, OnInit, computed, inject, signal } from '@angular/core';
 import { Router } from '@angular/router';
 import jsPDF from 'jspdf';
 
+import { AuthService } from '../../core/auth/auth.service';
 import { DashboardOrder, OrderDetails, OrderService } from '../../core/orders/order.service';
 
 type OrderStatus = 'Ready to pick' | 'In progress' | 'Complete';
@@ -16,6 +17,7 @@ type CutPieceHighlight = 'none' | 'juco' | 'natural';
   styleUrl: './dashboard.scss',
 })
 export class Dashboard implements OnInit {
+  private readonly authService = inject(AuthService);
   private readonly orderService = inject(OrderService);
   private readonly router = inject(Router);
 
@@ -26,7 +28,9 @@ export class Dashboard implements OnInit {
   protected readonly orders = signal<Order[]>([]);
   protected readonly isLoading = signal(false);
   protected readonly openStatusMenu = signal<string | null>(null);
+  protected readonly orderPendingEdit = signal<Order | null>(null);
   protected readonly statusOptions: OrderStatus[] = ['Ready to pick', 'In progress', 'Complete'];
+  protected readonly canEditOrders = this.authService.canAccessSales;
 
   protected readonly tabs: { id: OrderTab; label: string }[] = [
     { id: 'current', label: 'Current orders' },
@@ -137,7 +141,31 @@ export class Dashboard implements OnInit {
   }
 
   protected editOrder(order: Order): void {
-    this.router.navigate(['/admin'], {
+    if (order.status === 'In progress') {
+      this.orderPendingEdit.set(order);
+      return;
+    }
+
+    this.openOrderForEditing(order);
+  }
+
+  protected cancelEditOrder(): void {
+    this.orderPendingEdit.set(null);
+  }
+
+  protected confirmEditOrder(): void {
+    const order = this.orderPendingEdit();
+
+    if (!order) {
+      return;
+    }
+
+    this.orderPendingEdit.set(null);
+    this.openOrderForEditing(order);
+  }
+
+  private openOrderForEditing(order: Order): void {
+    this.router.navigate(['/sales'], {
       queryParams: {
         orderId: order.id,
       },
@@ -225,10 +253,11 @@ export class Dashboard implements OnInit {
     const quantity = bag.quantity ?? 0;
     const width = Number(bag.width ?? 0);
     const displayHeight = Number(bag.height ?? 0);
-    const height = displayHeight + 0.5;
     const gusset = Number(bag.gusset ?? 0);
-    const gussetHeight = height + width + height + 0.25;
-    const gussetWidth = gusset + 2.25;
+    const cutDimensions = this.getCutDimensions(width, displayHeight, gusset);
+    const height = cutDimensions.frontBackHeight;
+    const gussetHeight = cutDimensions.gussetLength;
+    const gussetWidth = cutDimensions.gussetWidth;
     const zipWidth = width - 1;
     const zipHeight = gusset + 1;
     const color = bag.color ?? '-';
@@ -428,10 +457,12 @@ export class Dashboard implements OnInit {
 
   private addPrintDimensionSummary(pdf: jsPDF, order: OrderDetails, y: number): number {
     const width = Number(order.bag.width ?? 0);
-    const height = Number(order.bag.height ?? 0);
+    const displayHeight = Number(order.bag.height ?? 0);
     const gusset = Number(order.bag.gusset ?? 0);
-    const gussetWidth = height + width + height + 0.25;
-    const gussetHeight = gusset + 2.25;
+    const cutDimensions = this.getCutDimensions(width, displayHeight, gusset);
+    const height = cutDimensions.frontBackHeight;
+    const gussetWidth = cutDimensions.gussetLength;
+    const gussetHeight = cutDimensions.gussetWidth;
 
     pdf.setFillColor(255, 252, 242);
     pdf.setDrawColor(238, 226, 198);
@@ -451,6 +482,18 @@ export class Dashboard implements OnInit {
     );
 
     return y + 21;
+  }
+
+  private getCutDimensions(width: number, displayHeight: number, gusset: number) {
+    const frontBackHeight = displayHeight + 0.5;
+    const gussetLength = frontBackHeight + width + frontBackHeight + 0.25;
+    const gussetWidth = gusset + 2.25;
+
+    return {
+      frontBackHeight,
+      gussetLength,
+      gussetWidth,
+    };
   }
 
   private addCustomerPage(pdf: jsPDF, order: OrderDetails): void {

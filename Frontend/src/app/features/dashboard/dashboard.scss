@@ -1,10 +1,14 @@
 :host {
   display: block;
+  max-width: 100%;
+  min-width: 0;
 }
 
 .orders-page {
   display: grid;
   gap: 28px;
+  max-width: 100%;
+  min-width: 0;
 }
 
 .page-heading {
@@ -39,6 +43,9 @@ h1 {
   border-radius: 22px;
   background: rgba(255, 255, 255, 0.94);
   box-shadow: 0 14px 36px rgba(55, 17, 111, 0.07);
+  max-width: 100%;
+  min-width: 0;
+  overflow: hidden;
 }
 
 .tabs {
@@ -88,8 +95,13 @@ h1 {
 }
 
 .table-wrap {
-  overflow: visible;
+  max-width: 100%;
+  min-width: 0;
+  overflow-x: auto;
+  overflow-y: visible;
+  position: relative;
   scrollbar-width: none;
+  width: 100%;
 }
 
 table {
@@ -340,6 +352,82 @@ td strong {
   stroke-width: 1.8;
 }
 
+.primary-button,
+.secondary-button {
+  align-items: center;
+  border-radius: 8px;
+  cursor: pointer;
+  display: inline-flex;
+  font: inherit;
+  font-weight: 800;
+  justify-content: center;
+  min-height: 42px;
+  padding: 0 16px;
+}
+
+.primary-button {
+  background: var(--gradient-brand);
+  border: 0;
+  color: #ffffff;
+}
+
+.secondary-button {
+  background: #ffffff;
+  border: 1px solid var(--color-border);
+  color: var(--color-text);
+}
+
+.confirm-modal {
+  align-items: center;
+  background: rgba(33, 26, 46, 0.58);
+  display: flex;
+  inset: 0;
+  justify-content: center;
+  padding: 24px;
+  position: fixed;
+  z-index: 10001;
+}
+
+.confirm-modal__content {
+  background: #ffffff;
+  border: 1px solid rgba(92, 32, 168, 0.12);
+  border-radius: 8px;
+  box-shadow: 0 24px 70px rgba(20, 8, 38, 0.24);
+  display: grid;
+  gap: 18px;
+  max-width: 440px;
+  padding: 24px;
+  width: min(100%, 440px);
+}
+
+.confirm-modal__eyebrow {
+  color: var(--color-primary);
+  font-size: 12px;
+  font-weight: 800;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+}
+
+.confirm-modal h2 {
+  color: var(--color-ink);
+  font-family: var(--font-display);
+  font-size: 24px;
+  line-height: 1.15;
+  margin: 6px 0 8px;
+}
+
+.confirm-modal p {
+  color: var(--color-text);
+  line-height: 1.6;
+  margin: 0;
+}
+
+.confirm-modal__actions {
+  display: flex;
+  gap: 12px;
+  justify-content: flex-end;
+}
+
 .empty-state {
   height: 160px;
   color: var(--color-muted);
@@ -360,6 +448,13 @@ td strong {
     padding: 15px 18px;
   }
 
+  .table-wrap {
+    overflow-x: auto;
+    overflow-y: visible;
+    position: relative;
+    -webkit-overflow-scrolling: touch;
+  }
+
   table {
     min-width: 900px;
   }
@@ -375,17 +470,17 @@ td strong {
 
   .due-heading,
   .due-cell {
-    right: 78px;
-    width: 130px;
-    min-width: 130px;
+    right: 96px;
+    width: 138px;
+    min-width: 138px;
     box-shadow: -8px 0 14px -14px rgba(55, 17, 111, 0.8);
   }
 
   .actions-heading,
   .actions-cell {
     right: 0;
-    width: 78px;
-    min-width: 78px;
+    width: 96px;
+    min-width: 96px;
   }
 
   .due-heading,
@@ -411,6 +506,22 @@ td strong {
     width: 100%;
     justify-content: center;
   }
+
+  .confirm-modal {
+    padding: 14px;
+  }
+
+  .confirm-modal__content {
+    padding: 20px;
+  }
+
+  .confirm-modal__actions {
+    flex-direction: column-reverse;
+  }
+
+  .confirm-modal__actions button {
+    width: 100%;
+  }
 }
 
 @media (max-width: 700px) {
@@ -432,15 +543,7 @@ td strong {
     min-width: max-content;
   }
 
-  .table-responsive,
-  .table-wrapper,
-  .orders-table-wrapper,
-  .table-wrap {
-    overflow-x: auto;
-    -webkit-overflow-scrolling: touch;
-  }
-
   table {
-    min-width: 560px;
+    min-width: 900px;
   }
 }

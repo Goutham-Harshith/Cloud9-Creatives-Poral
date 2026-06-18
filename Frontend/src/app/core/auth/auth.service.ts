@@ -50,6 +50,22 @@ export class AuthService {
     return this.userEmail.charAt(0).toUpperCase() || 'C';
   }
 
+  get userRole(): string {
+    return this.session?.user.role ?? '';
+  }
+
+  get userId(): string {
+    return this.session?.user.id ?? '';
+  }
+
+  get canManageUsers(): boolean {
+    return ['SUPER_ADMIN', 'ADMIN'].includes(this.userRole);
+  }
+
+  get canAccessSales(): boolean {
+    return ['SUPER_ADMIN', 'ADMIN', 'SALES'].includes(this.userRole);
+  }
+
   get accessToken(): string | null {
     return this.session?.accessToken ?? null;
   }

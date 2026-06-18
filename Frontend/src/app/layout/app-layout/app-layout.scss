@@ -13,8 +13,10 @@
 
 .app-content {
   width: min(1440px, 100%);
+  min-width: 0;
   min-height: calc(100vh - 82px);
   margin: 0 auto;
+  overflow-x: hidden;
   padding: 34px 42px 52px;
 }
 

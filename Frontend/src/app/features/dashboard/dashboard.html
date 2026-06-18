@@ -74,18 +74,20 @@
               </td>
               <td class="due-cell">{{ formatDate(order.dueDate) }}</td>
               <td class="actions-cell">
-                <button
-                  type="button"
-                  class="action-button"
-                  (click)="editOrder(order)"
-                  [attr.aria-label]="'Edit order ' + order.orderNumber"
-                  title="Edit order"
-                >
-                  <svg viewBox="0 0 24 24" aria-hidden="true">
-                    <path d="M12 20h9" />
-                    <path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4Z" />
-                  </svg>
-                </button>
+                @if (canEditOrders) {
+                  <button
+                    type="button"
+                    class="action-button"
+                    (click)="editOrder(order)"
+                    [attr.aria-label]="'Edit order ' + order.orderNumber"
+                    title="Edit order"
+                  >
+                    <svg viewBox="0 0 24 24" aria-hidden="true">
+                      <path d="M12 20h9" />
+                      <path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4Z" />
+                    </svg>
+                  </button>
+                }
                 <button
                   type="button"
                   class="action-button"
@@ -155,4 +157,20 @@
       </nav>
     </footer>
   </section>
+
+  @if (orderPendingEdit(); as order) {
+    <div class="confirm-modal" role="dialog" aria-modal="true" aria-labelledby="edit-order-title">
+      <div class="confirm-modal__content">
+        <div>
+          <span class="confirm-modal__eyebrow">Confirm edit</span>
+          <h2 id="edit-order-title">Edit {{ order.orderNumber }}?</h2>
+          <p>This order is already in progress. Editing it may affect production details.</p>
+        </div>
+        <div class="confirm-modal__actions">
+          <button type="button" class="secondary-button" (click)="cancelEditOrder()">Cancel</button>
+          <button type="button" class="primary-button" (click)="confirmEditOrder()">Yes, edit</button>
+        </div>
+      </div>
+    </div>
+  }
 </section>

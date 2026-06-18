@@ -23,13 +23,25 @@
         </svg>
         <span>Home</span>
       </a>
-      <a routerLink="/admin" routerLinkActive="nav-link--active" class="nav-link">
-        <svg viewBox="0 0 24 24" aria-hidden="true">
-          <path d="M12 3 4 7v5c0 5 3.4 8.8 8 9 4.6-.2 8-4 8-9V7l-8-4Z" />
-          <path d="M9.5 12.5 11 14l3.5-4" />
-        </svg>
-        <span>Admin</span>
-      </a>
+      @if (canAccessSales) {
+        <a routerLink="/sales" routerLinkActive="nav-link--active" class="nav-link">
+          <svg viewBox="0 0 24 24" aria-hidden="true">
+            <path d="M6 3h12v18l-3-2-3 2-3-2-3 2V3Z" />
+            <path d="M9 8h6M9 12h6M9 16h3" />
+          </svg>
+          <span>Sales</span>
+        </a>
+      }
+      @if (canManageUsers) {
+        <a routerLink="/admin" routerLinkActive="nav-link--active" class="nav-link">
+          <svg viewBox="0 0 24 24" aria-hidden="true">
+            <path d="M16 21v-2a4 4 0 0 0-4-4H7a4 4 0 0 0-4 4v2" />
+            <circle cx="9.5" cy="7" r="4" />
+            <path d="M19 8v6M16 11h6" />
+          </svg>
+          <span>Admin</span>
+        </a>
+      }
       <a routerLink="/reports" routerLinkActive="nav-link--active" class="nav-link">
         <svg viewBox="0 0 24 24" aria-hidden="true">
           <path d="M5 20V10M12 20V4M19 20v-7" />
