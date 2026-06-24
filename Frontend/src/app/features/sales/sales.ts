@@ -37,7 +37,7 @@ export class Sales implements OnInit {
   protected readonly fabrics = ['Jute', 'Juco'];
   protected readonly zipOptions = ['None', 'Zip', 'Velcro', 'Button'];
   protected readonly colors = ['White', 'Natural', 'Combination'];
-  protected readonly handles = ['Natural tape', 'White tape', 'Natural rope', 'White rope'];
+  protected readonly handles = ['Natural tape', 'White tape', 'Natural rope', 'White rope', 'Bamboo'];
   protected readonly prints = ['Plain', 'Single Print', 'Double Print', 'Full Print'];
   protected readonly courierTypes = ['Professional couriers', 'APSRTC', 'Self pickup', 'Others'];
 
