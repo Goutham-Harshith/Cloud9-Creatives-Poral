@@ -52,6 +52,24 @@ body {
   -webkit-font-smoothing: antialiased;
 }
 
+.toast-container.toast-top-right {
+  position: fixed !important;
+  right: 16px !important;
+  top: 16px !important;
+  z-index: 100000 !important;
+}
+
+@media (max-width: 480px) {
+  .toast-container.toast-top-right {
+    left: 12px !important;
+    right: 12px !important;
+  }
+
+  .toast-container.toast-top-right .ngx-toastr {
+    width: 100%;
+  }
+}
+
 button,
 input {
   font: inherit;

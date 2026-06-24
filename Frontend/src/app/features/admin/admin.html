@@ -115,6 +115,16 @@
               [placeholder]="isEditMode ? 'Leave blank to keep current' : 'Minimum 6 characters'"
             />
           </label>
+
+          <label>
+            <span>Re-enter {{ isEditMode ? 'new password' : 'password' }}</span>
+            <input
+              type="password"
+              formControlName="confirmPassword"
+              autocomplete="new-password"
+              [placeholder]="isEditMode ? 'Required when changing password' : 'Re-enter password'"
+            />
+          </label>
         } @else {
           <div class="protected-note">
             This Super Admin account is protected. You can view it, but only that user can change their own password.

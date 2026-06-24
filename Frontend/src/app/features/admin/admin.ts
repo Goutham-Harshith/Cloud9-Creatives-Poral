@@ -1,12 +1,23 @@
 import { CommonModule } from '@angular/common';
 import { Component, OnInit, computed, inject, signal } from '@angular/core';
-import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
+import { AbstractControl, FormBuilder, ReactiveFormsModule, ValidationErrors, ValidatorFn, Validators } from '@angular/forms';
 import { ToastrService } from 'ngx-toastr';
 
 import { AuthService } from '../../core/auth/auth.service';
 import { ManagedUser, UserRole, UserService } from '../../core/users/user.service';
 
 type UserSort = 'role' | 'name';
+
+const matchingPasswords: ValidatorFn = (control: AbstractControl): ValidationErrors | null => {
+  const password = control.get('password')?.value ?? '';
+  const confirmPassword = control.get('confirmPassword')?.value ?? '';
+
+  if (!password && !confirmPassword) {
+    return null;
+  }
+
+  return password && confirmPassword && password === confirmPassword ? null : { passwordMismatch: true };
+};
 
 @Component({
   selector: 'app-admin',
@@ -75,9 +86,10 @@ export class Admin implements OnInit {
     email: ['', [Validators.required, Validators.email]],
     name: [''],
     password: ['', [Validators.required, Validators.minLength(6)]],
+    confirmPassword: ['', [Validators.required]],
     role: ['SALES' as UserRole, Validators.required],
     isActive: [true],
-  });
+  }, { validators: matchingPasswords });
 
   ngOnInit(): void {
     this.loadUsers();
@@ -103,11 +115,14 @@ export class Admin implements OnInit {
       email: '',
       name: '',
       password: '',
+      confirmPassword: '',
       role: 'SALES',
       isActive: true,
     });
     this.userForm.controls.password.setValidators([Validators.required, Validators.minLength(6)]);
+    this.userForm.controls.confirmPassword.setValidators([Validators.required]);
     this.userForm.controls.password.updateValueAndValidity();
+    this.userForm.controls.confirmPassword.updateValueAndValidity();
     this.setProfileControlsDisabled(false);
   }
 
@@ -117,15 +132,14 @@ export class Admin implements OnInit {
       email: user.email,
       name: user.name,
       password: '',
+      confirmPassword: '',
       role: user.role,
       isActive: user.isActive,
     });
-    this.userForm.controls.password.setValidators(
-      user.role === 'SUPER_ADMIN' && user.id === this.currentUserId
-        ? [Validators.minLength(6)]
-        : [Validators.minLength(6)],
-    );
+    this.userForm.controls.password.setValidators([Validators.minLength(6)]);
+    this.userForm.controls.confirmPassword.setValidators([]);
     this.userForm.controls.password.updateValueAndValidity();
+    this.userForm.controls.confirmPassword.updateValueAndValidity();
     this.setProfileControlsDisabled(user.role === 'SUPER_ADMIN', user.id === this.currentUserId);
   }
 
@@ -320,6 +334,10 @@ export class Admin implements OnInit {
 
     if (password.hasError('minlength')) {
       return 'Password must be at least 6 characters.';
+    }
+
+    if (this.userForm.hasError('passwordMismatch')) {
+      return 'Passwords must match.';
     }
 
     return 'Please check the user details and try again.';

@@ -11,7 +11,12 @@ import { provideToastr } from 'ngx-toastr';
 export const appConfig: ApplicationConfig = {
   providers: [
     provideAnimations(),
-    provideToastr(),
+    provideToastr({
+      closeButton: true,
+      newestOnTop: true,
+      positionClass: 'toast-top-right',
+      preventDuplicates: true,
+    }),
     provideBrowserGlobalErrorListeners(),
     provideHttpClient(withInterceptors([authInterceptor, loadingInterceptor])),
     provideRouter(routes)
