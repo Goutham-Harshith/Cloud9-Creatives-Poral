@@ -52,12 +52,23 @@
 
       <label>
         <span class="required-label">Quantity</span>
-        <input type="number" formControlName="quantity" min="1" />
+        <input type="number" formControlName="quantity" min="1" (change)="refreshCapacityPlan()" />
       </label>
       
       <label>
         <span class="required-label">Due date</span>
-        <input type="date" formControlName="dueDate" />
+        <input type="date" formControlName="dueDate" [min]="minimumScheduleDate" (change)="refreshCapacityPlan()" />
+      </label>
+
+      <label>
+        <span class="required-label">Production start date</span>
+        <input
+          type="date"
+          formControlName="productionStartDate"
+          [min]="minimumScheduleDate"
+          [max]="orderForm.controls.bag.controls.dueDate.value || null"
+          (change)="refreshCapacityPlan()"
+        />
       </label>
 
       <div class="dimension-field">
@@ -114,6 +125,40 @@
         <span>Notes</span>
         <textarea rows="3" formControlName="notes"></textarea>
       </label>
+
+      <section class="capacity-planner order-form__wide" aria-label="Production capacity planner">
+        <div class="capacity-planner__heading">
+          <div>
+            <span>Production schedule</span>
+            <strong>Reserve Jute capacity</strong>
+            <small>{{ dailyJuteCapacity }} pcs available per day</small>
+          </div>
+          <button type="button" class="secondary-button" (click)="toggleCapacityPreview()">
+            {{ showCapacityPreview() ? 'Hide dates' : 'Show dates' }}
+          </button>
+        </div>
+
+        @if (showCapacityPreview()) {
+          @if (getSuggestedCapacityPlan().length) {
+            <div class="capacity-plan">
+              @for (day of getSuggestedCapacityPlan(); track day.date) {
+                <div class="capacity-plan__day">
+                  <span>{{ formatScheduleDate(day.date) }}</span>
+                  <strong>{{ day.quantity }} pcs</strong>
+                  @if (day.overCapacity) {
+                    <small class="capacity-plan__overload">-{{ day.overCapacity }} pcs remaining capacity</small>
+                  } @else {
+                    <small>{{ day.remainingCapacity }} pcs left</small>
+                  }
+                </div>
+              }
+            </div>
+            <div class="capacity-planner__footer">
+              <span>Dates are calculated backwards from dispatch and will never use a past day.</span>
+            </div>
+          }
+        }
+      </section>
     </fieldset>
 
     <fieldset class="form-step" formArrayName="designs" *ngIf="currentStep === 2">

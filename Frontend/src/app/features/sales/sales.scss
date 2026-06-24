@@ -207,6 +207,83 @@
   grid-column: 1 / -1;
 }
 
+.capacity-planner {
+  background: rgba(92, 32, 168, 0.035);
+  border: 1px solid rgba(92, 32, 168, 0.13);
+  border-radius: 8px;
+  display: grid;
+  gap: 14px;
+  padding: 16px;
+}
+
+.capacity-planner__heading,
+.capacity-planner__footer {
+  align-items: center;
+  display: flex;
+  gap: 12px;
+  justify-content: space-between;
+}
+
+.capacity-planner__heading div {
+  display: grid;
+  gap: 3px;
+}
+
+.capacity-planner__heading span {
+  color: var(--color-muted);
+  font-size: 11px;
+  font-weight: 800;
+  text-transform: uppercase;
+}
+
+.capacity-planner__heading strong {
+  color: var(--color-ink);
+}
+
+.capacity-planner__heading small,
+.capacity-planner__footer > span {
+  color: var(--color-muted);
+  font-size: 12px;
+}
+
+.capacity-plan {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.capacity-plan__day {
+  background: #ffffff;
+  border: 1px solid var(--color-border);
+  border-top: 3px solid var(--color-primary);
+  border-radius: 6px;
+  display: grid;
+  gap: 3px;
+  min-width: 116px;
+  padding: 10px;
+}
+
+.capacity-plan__day span,
+.capacity-plan__day small {
+  color: var(--color-muted);
+  font-size: 11px;
+  font-weight: 700;
+}
+
+.capacity-plan__day strong {
+  color: var(--color-primary);
+  font-size: 15px;
+}
+
+.capacity-plan__overload {
+  color: var(--color-error) !important;
+}
+
+.capacity-planner__footer {
+  border-top: 1px solid rgba(92, 32, 168, 0.1);
+  padding-top: 12px;
+}
+
 .dimension-field__inputs {
   display: grid;
   gap: 12px;
@@ -606,6 +683,17 @@
   .form-step__title-row {
     align-items: stretch;
     flex-direction: column;
+  }
+
+  .capacity-planner__heading,
+  .capacity-planner__footer {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .capacity-planner__heading .secondary-button,
+  .capacity-planner__footer button {
+    width: 100%;
   }
 
   .form-step__title-row .secondary-button {

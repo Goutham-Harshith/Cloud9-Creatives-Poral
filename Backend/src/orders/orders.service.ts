@@ -7,6 +7,7 @@ import { extname, join } from 'node:path';
 import { PrismaService } from '../prisma/prisma.service';
 
 type DashboardOrderStatus = 'Ready to pick' | 'In progress' | 'Complete';
+const DAILY_JUTE_CAPACITY = 160;
 
 export interface UploadedOrderFile {
   fieldname: string;
@@ -21,6 +22,7 @@ interface IncomingOrder {
     fabric: string;
     quantity: number | null;
     dueDate: string;
+    productionStartDate: string;
     width: number | null;
     height: number | null;
     gusset: number | null;
@@ -83,6 +85,7 @@ export class OrdersService {
     const orderNumber = await this.createNextOrderNumber();
 
     const designs = await this.storeDesigns(order, id, fileByDesignIndex);
+    const capacityReservations = await this.planCapacityReservations(order);
     const createdOrder = await this.prisma.order.create({
       data: {
         id,
@@ -92,6 +95,9 @@ export class OrdersService {
         designs: {
           create: designs.map((design, index) => this.toDesignData(design, index)),
         },
+        capacityReservations: {
+          create: capacityReservations,
+        },
       },
       include: {
         designs: {
@@ -99,6 +105,7 @@ export class OrdersService {
             sortOrder: 'asc',
           },
         },
+        capacityReservations: true,
       },
     });
 
@@ -120,6 +127,7 @@ export class OrdersService {
     const fileByDesignIndex = this.mapFilesByDesignIndex(files);
 
     const designs = await this.storeDesigns(order, id, fileByDesignIndex);
+    const capacityReservations = await this.planCapacityReservations(order, id);
     const updatedOrder = await this.prisma.$transaction(async (prisma) => {
       await prisma.orderDesign.deleteMany({
         where: {
@@ -136,6 +144,10 @@ export class OrdersService {
           ...this.toOrderData(order),
           designs: {
             create: designs.map((design, index) => this.toDesignData(design, index)),
+          },
+          capacityReservations: {
+            deleteMany: {},
+            create: capacityReservations,
           },
         },
         include: {
@@ -181,6 +193,11 @@ export class OrdersService {
             sortOrder: 'asc',
           },
         },
+        capacityReservations: {
+          orderBy: {
+            productionDate: 'asc',
+          },
+        },
       },
     });
 
@@ -192,6 +209,45 @@ export class OrdersService {
       ...this.toStoredOrder(order),
       status: this.toDashboardStatus(order.status),
       updatedDate: order.updatedAt.toISOString(),
+    };
+  }
+
+  async findCapacityReservations(from?: string, to?: string) {
+    const reservations = await this.prisma.orderCapacityReservation.findMany({
+      where: {
+        productionDate: {
+          ...(from ? { gte: from } : {}),
+          ...(to ? { lte: to } : {}),
+        },
+      },
+      include: {
+        order: {
+          select: {
+            id: true,
+            orderNumber: true,
+            customerName: true,
+            fabric: true,
+          },
+        },
+      },
+      orderBy: {
+        productionDate: 'asc',
+      },
+    });
+
+    return {
+      dailyCapacity: DAILY_JUTE_CAPACITY,
+      reservations: reservations.map((reservation) => ({
+        id: reservation.id,
+        date: reservation.productionDate,
+        quantity: reservation.quantity,
+        order: {
+          id: reservation.order.id,
+          orderNumber: reservation.order.orderNumber,
+          customer: reservation.order.customerName,
+          fabric: reservation.order.fabric,
+        },
+      })),
     };
   }
 
@@ -257,6 +313,7 @@ export class OrdersService {
       fabric: order.bag.fabric,
       quantity: order.bag.quantity,
       dueDate: order.bag.dueDate,
+      productionStartDate: order.bag.productionStartDate,
       width: order.bag.width,
       height: order.bag.height,
       gusset: order.bag.gusset,
@@ -298,6 +355,7 @@ export class OrdersService {
         fabric: order.fabric,
         quantity: order.quantity,
         dueDate: order.dueDate,
+        productionStartDate: order.productionStartDate,
         width: order.width,
         height: order.height,
         gusset: order.gusset,
@@ -331,6 +389,87 @@ export class OrdersService {
             : null,
       })),
     };
+  }
+
+  private async planCapacityReservations(order: IncomingOrder, excludeOrderId?: string) {
+    if (!order.bag.quantity) {
+      return [];
+    }
+
+    const dueDate = this.parseDate(order.bag.dueDate);
+    const requestedStartDate = this.parseDate(order.bag.productionStartDate);
+    const today = new Date();
+    today.setHours(12, 0, 0, 0);
+
+    if (dueDate < today || requestedStartDate < today) {
+      throw new BadRequestException('Production start and dispatch dates cannot be in the past.');
+    }
+
+    const earliestDate = requestedStartDate > today ? requestedStartDate : today;
+
+    if (dueDate < earliestDate) {
+      throw new BadRequestException('Dispatch date must be on or after the production start date.');
+    }
+
+    const reservations = await this.prisma.orderCapacityReservation.findMany({
+      where: {
+        productionDate: {
+          gte: this.toDateKey(earliestDate),
+          lte: this.toDateKey(dueDate),
+        },
+        ...(excludeOrderId ? { orderId: { not: excludeOrderId } } : {}),
+      },
+    });
+    const bookedCapacity = new Map<string, number>();
+
+    reservations.forEach((reservation) => {
+      bookedCapacity.set(
+        reservation.productionDate,
+        (bookedCapacity.get(reservation.productionDate) ?? 0) + reservation.quantity,
+      );
+    });
+
+    const plan: Array<{ productionDate: string; quantity: number }> = [];
+    const date = new Date(dueDate);
+    let remainingQuantity = order.bag.quantity;
+
+    while (remainingQuantity > 0 && date >= earliestDate) {
+      const productionDate = this.toDateKey(date);
+      const isEarliestDate = productionDate === this.toDateKey(earliestDate);
+      const availableCapacity = Math.max(DAILY_JUTE_CAPACITY - (bookedCapacity.get(productionDate) ?? 0), 0);
+      const quantity = isEarliestDate
+        ? remainingQuantity
+        : Math.min(remainingQuantity, availableCapacity);
+
+      if (quantity > 0) {
+        plan.push({ productionDate, quantity });
+        remainingQuantity -= quantity;
+      }
+
+      date.setDate(date.getDate() - 1);
+    }
+
+    return plan;
+  }
+
+  private parseDate(value: string): Date {
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(value)) {
+      throw new BadRequestException('Production and dispatch dates must use YYYY-MM-DD format.');
+    }
+
+    const date = new Date(`${value}T12:00:00`);
+
+    if (Number.isNaN(date.getTime())) {
+      throw new BadRequestException('Invalid production or dispatch date.');
+    }
+
+    return date;
+  }
+
+  private toDateKey(date: Date): string {
+    const month = String(date.getMonth() + 1).padStart(2, '0');
+    const day = String(date.getDate()).padStart(2, '0');
+    return `${date.getFullYear()}-${month}-${day}`;
   }
 
   private async storeDesigns(

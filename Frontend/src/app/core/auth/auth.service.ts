@@ -66,6 +66,10 @@ export class AuthService {
     return ['SUPER_ADMIN', 'ADMIN', 'SALES'].includes(this.userRole);
   }
 
+  get canAccessScheduler(): boolean {
+    return ['SUPER_ADMIN', 'ADMIN', 'SALES', 'MANAGER'].includes(this.userRole);
+  }
+
   get accessToken(): string | null {
     return this.session?.accessToken ?? null;
   }

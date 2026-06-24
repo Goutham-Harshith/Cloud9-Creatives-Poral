@@ -7,6 +7,7 @@ import {
   Param,
   Patch,
   Post,
+  Query,
   Put,
   UploadedFiles,
   UseInterceptors,
@@ -27,6 +28,11 @@ export class OrdersController {
   @Get()
   getOrders() {
     return this.ordersService.findAllForDashboard();
+  }
+
+  @Get('capacity')
+  getCapacity(@Query('from') from?: string, @Query('to') to?: string) {
+    return this.ordersService.findCapacityReservations(from, to);
   }
 
   @Get(':id')

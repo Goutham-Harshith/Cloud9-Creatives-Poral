@@ -1,0 +1,110 @@
+<section class="scheduler-page">
+  <header class="scheduler-page__header">
+    <div>
+      <p class="scheduler-page__eyebrow">Manufacturing planner</p>
+      <h1>Capacity scheduler</h1>
+      <p>Reserve daily Jute production capacity against order dispatch dates.</p>
+    </div>
+    <div class="capacity-summary" aria-label="Daily Jute capacity">
+      <span>Jute capacity</span>
+      <strong>{{ dailyCapacity }} pcs / day</strong>
+    </div>
+  </header>
+
+  <div class="scheduler-layout">
+    <section class="calendar-panel" aria-label="Jute production capacity calendar">
+      <header class="calendar-toolbar">
+        <div>
+          <span class="calendar-toolbar__label">Jute bags</span>
+          <h2>{{ monthLabel() }}</h2>
+        </div>
+        <div class="calendar-toolbar__actions">
+          <button type="button" class="icon-button" aria-label="Previous month" (click)="previousMonth()">
+            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="m14 6-6 6 6 6" /></svg>
+          </button>
+          <button type="button" class="icon-button" aria-label="Next month" (click)="nextMonth()">
+            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="m10 6 6 6-6 6" /></svg>
+          </button>
+        </div>
+      </header>
+
+      <div class="calendar-legend" aria-label="Capacity legend">
+        <span><i class="legend-dot legend-dot--available"></i> Available</span>
+        <span><i class="legend-dot legend-dot--partial"></i> Partially reserved</span>
+        <span><i class="legend-dot legend-dot--full"></i> Full</span>
+        <span><i class="legend-dot legend-dot--over"></i> Over capacity</span>
+      </div>
+
+      <div class="calendar-grid">
+        @for (weekday of ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat']; track weekday) {
+          <span class="calendar-weekday">{{ weekday }}</span>
+        }
+        @for (day of calendarDays(); track day.key) {
+          <button
+            type="button"
+            class="calendar-day"
+            [class.calendar-day--muted]="!day.isCurrentMonth"
+            [class.calendar-day--selected]="day.key === selectedDate()"
+            [class.calendar-day--available]="day.state === 'available'"
+            [class.calendar-day--partial]="day.state === 'partial'"
+            [class.calendar-day--full]="day.state === 'full'"
+            [class.calendar-day--over]="day.state === 'over'"
+            (click)="selectDay(day)"
+          >
+            <span class="calendar-day__number">{{ day.date.getDate() }}</span>
+            @if (day.isCurrentMonth) {
+              @if (day.overCapacity) {
+                <span class="calendar-day__capacity">-{{ day.overCapacity }} pcs</span>
+              } @else {
+                <span class="calendar-day__capacity">{{ day.remaining }} left</span>
+              }
+              <span class="calendar-day__meter"><i [style.width.%]="day.meterPercent"></i></span>
+            }
+          </button>
+        }
+      </div>
+    </section>
+
+    <aside class="day-panel">
+      @if (selectedDay(); as day) {
+        <header class="day-panel__header">
+          <span>Selected date</span>
+          <h2>{{ formatDate(day.date) }}</h2>
+          <strong [class.day-panel__status--available]="day.state === 'available'" [class.day-panel__status--partial]="day.state === 'partial'" [class.day-panel__status--full]="day.state === 'full'" [class.day-panel__status--over]="day.state === 'over'">
+            @if (day.overCapacity) {
+              -{{ day.overCapacity }} pcs remaining capacity
+            } @else {
+              {{ day.remaining }} of {{ dailyCapacity }} pcs available
+            }
+          </strong>
+        </header>
+
+        @if (selectedBookings().length) {
+          <div class="booking-list">
+            @for (booking of selectedBookings(); track booking.orderNumber) {
+              <article class="booking-card">
+                <div>
+                  <span>{{ booking.orderNumber }}</span>
+                  <strong>{{ booking.customer }}</strong>
+                </div>
+                <b>{{ booking.quantity }} pcs</b>
+                <small>{{ booking.fabric }} bags</small>
+                @if (canEditOrders) {
+                  <button type="button" class="booking-card__edit" [attr.aria-label]="'Edit ' + booking.orderNumber" (click)="openOrder(booking)">
+                    <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 20h9M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4Z" /></svg>
+                  </button>
+                }
+              </article>
+            }
+          </div>
+        } @else {
+          <div class="empty-day">
+            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 5h16v15H4zM8 3v4M16 3v4M4 10h16" /></svg>
+            <strong>No orders scheduled</strong>
+            <span>All {{ dailyCapacity }} Jute bag slots are available.</span>
+          </div>
+        }
+      }
+    </aside>
+  </div>
+</section>

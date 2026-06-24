@@ -11,6 +11,7 @@ interface CreateOrderPayload {
     fabric: string | null;
     quantity: number | null;
     dueDate: string | null;
+    productionStartDate: string | null;
     width: number | null;
     height: number | null;
     gusset: number | null;
@@ -84,6 +85,23 @@ export interface UpdatedOrderStatus {
   status: DashboardOrder['status'];
 }
 
+export interface CapacityReservation {
+  id: string;
+  date: string;
+  quantity: number;
+  order: {
+    id: string;
+    orderNumber: string;
+    customer: string;
+    fabric: string;
+  };
+}
+
+export interface CapacitySchedule {
+  dailyCapacity: number;
+  reservations: CapacityReservation[];
+}
+
 export interface DeletedOrder {
   id: string;
   orderNumber: string;
@@ -124,6 +142,12 @@ export class OrderService {
 
   getOrder(orderId: string): Observable<OrderDetails> {
     return this.http.get<OrderDetails>(`${API_BASE_URL}/orders/${orderId}`);
+  }
+
+  getCapacitySchedule(from: string, to: string): Observable<CapacitySchedule> {
+    return this.http.get<CapacitySchedule>(`${API_BASE_URL}/orders/capacity`, {
+      params: { from, to },
+    });
   }
 
   updateOrder(orderId: string, order: CreateOrderPayload): Observable<CreatedOrder> {

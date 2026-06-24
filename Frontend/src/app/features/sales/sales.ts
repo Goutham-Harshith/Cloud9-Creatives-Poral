@@ -8,6 +8,13 @@ import { OrderDetails, OrderService, UploadedOrderFile } from '../../core/orders
 
 type WizardStep = 1 | 2 | 3;
 
+interface PlannedCapacityDay {
+  date: string;
+  quantity: number;
+  remainingCapacity: number;
+  overCapacity: number;
+}
+
 @Component({
   selector: 'app-sales',
   standalone: true,
@@ -39,6 +46,10 @@ export class Sales implements OnInit {
   protected isDeleting = false;
   protected readonly previewDialog = signal<{ url: string; name: string } | null>(null);
   protected readonly showDeleteConfirmation = signal(false);
+  protected readonly showCapacityPreview = signal(true);
+  protected readonly capacityReservations = signal<Array<{ date: string; quantity: number }>>([]);
+  protected readonly dailyJuteCapacity = 160;
+  protected readonly minimumScheduleDate = this.toDateKey(new Date());
   protected orderNumber = '';
   private editOrderId: string | null = null;
 
@@ -47,6 +58,7 @@ export class Sales implements OnInit {
       fabric: ['', Validators.required],
       quantity: [null as number | null, Validators.required],
       dueDate: ['', Validators.required],
+      productionStartDate: ['', Validators.required],
       width: [null as number | null, Validators.required],
       height: [null as number | null, Validators.required],
       gusset: [null as number | null, Validators.required],
@@ -85,6 +97,81 @@ export class Sales implements OnInit {
 
   protected get showCourierNotes(): boolean {
     return this.orderForm.controls.customer.controls.courierType.value === 'Others';
+  }
+
+  protected getSuggestedCapacityPlan(): PlannedCapacityDay[] {
+    const { dueDate, productionStartDate, quantity } = this.orderForm.controls.bag.getRawValue();
+
+    if (!dueDate || !quantity || quantity < 1) {
+      return [];
+    }
+
+    const days: PlannedCapacityDay[] = [];
+    let remainingQuantity = quantity;
+    const date = new Date(`${dueDate}T12:00:00`);
+    const today = new Date();
+    today.setHours(12, 0, 0, 0);
+    const todayKey = this.toDateKey(today);
+    const earliestDateKey = productionStartDate && productionStartDate > todayKey ? productionStartDate : todayKey;
+    const earliestDate = new Date(`${earliestDateKey}T12:00:00`);
+
+    while (remainingQuantity > 0 && date >= earliestDate) {
+      const isEarliestDate = this.toDateKey(date) === earliestDateKey;
+      const dateKey = this.toDateKey(date);
+      const bookedCapacity = this.capacityReservations()
+        .filter((reservation) => reservation.date === dateKey)
+        .reduce((total, reservation) => total + reservation.quantity, 0);
+      const availableCapacity = Math.max(this.dailyJuteCapacity - bookedCapacity, 0);
+      const plannedQuantity = isEarliestDate
+        ? remainingQuantity
+        : Math.min(remainingQuantity, availableCapacity);
+
+      if (!plannedQuantity) {
+        date.setDate(date.getDate() - 1);
+        continue;
+      }
+
+      const remainingCapacity = this.dailyJuteCapacity - bookedCapacity - plannedQuantity;
+
+      days.push({
+        date: dateKey,
+        quantity: plannedQuantity,
+        remainingCapacity: Math.max(remainingCapacity, 0),
+        overCapacity: Math.max(-remainingCapacity, 0),
+      });
+      remainingQuantity -= plannedQuantity;
+      date.setDate(date.getDate() - 1);
+    }
+
+    return days;
+  }
+
+  protected formatScheduleDate(date: string): string {
+    return new Date(`${date}T12:00:00`).toLocaleDateString('en-IN', { day: 'numeric', month: 'short' });
+  }
+
+  protected toggleCapacityPreview(): void {
+    this.showCapacityPreview.update((show) => !show);
+  }
+
+  protected refreshCapacityPlan(): void {
+    const { dueDate, productionStartDate } = this.orderForm.controls.bag.getRawValue();
+
+    if (!dueDate || !productionStartDate) {
+      this.capacityReservations.set([]);
+      return;
+    }
+
+    this.orderService.getCapacitySchedule(productionStartDate, dueDate).subscribe({
+      next: (schedule) => {
+        this.capacityReservations.set(
+          schedule.reservations
+            .filter((reservation) => reservation.order.id !== this.editOrderId)
+            .map((reservation) => ({ date: reservation.date, quantity: reservation.quantity })),
+        );
+      },
+      error: () => this.capacityReservations.set([]),
+    });
   }
 
   protected goBack(): void {
@@ -187,8 +274,8 @@ export class Sales implements OnInit {
     this.isSubmitting = true;
     const isEditMode = this.isEditMode;
     const request = this.editOrderId
-      ? this.orderService.updateOrder(this.editOrderId, this.orderForm.getRawValue())
-      : this.orderService.createOrder(this.orderForm.getRawValue());
+      ? this.orderService.updateOrder(this.editOrderId, this.getOrderPayload())
+      : this.orderService.createOrder(this.getOrderPayload());
 
     request.subscribe({
       next: () => {
@@ -242,6 +329,7 @@ export class Sales implements OnInit {
         fabric: order.bag.fabric ?? '',
         quantity: order.bag.quantity ?? null,
         dueDate: order.bag.dueDate ?? '',
+        productionStartDate: order.bag.productionStartDate ?? '',
         width: order.bag.width ?? null,
         height: order.bag.height ?? null,
         gusset: order.bag.gusset ?? null,
@@ -253,6 +341,7 @@ export class Sales implements OnInit {
       },
       customer: order.customer,
     });
+    this.refreshCapacityPlan();
   }
 
   private getPreviewUrl(uploadedFile: UploadedOrderFile | null): string | null {
@@ -282,11 +371,14 @@ export class Sales implements OnInit {
     this.designs.clear();
     this.designs.push(this.createDesignGroup());
     this.currentStep = 1;
+    this.showCapacityPreview.set(true);
+    this.capacityReservations.set([]);
     this.orderForm.reset({
       bag: {
         fabric: '',
         quantity: null,
         dueDate: '',
+        productionStartDate: '',
         width: null,
         height: null,
         gusset: null,
@@ -305,5 +397,15 @@ export class Sales implements OnInit {
         courierNotes: '',
       },
     });
+  }
+
+  private toDateKey(date: Date): string {
+    const month = String(date.getMonth() + 1).padStart(2, '0');
+    const day = String(date.getDate()).padStart(2, '0');
+    return `${date.getFullYear()}-${month}-${day}`;
+  }
+
+  private getOrderPayload() {
+    return this.orderForm.getRawValue();
   }
 }

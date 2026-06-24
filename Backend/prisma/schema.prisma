@@ -44,6 +44,7 @@ model Order {
   fabric                 String
   quantity               Int?
   dueDate                String
+  productionStartDate    String        @default("")
   width                  Float?
   height                 Float?
   gusset                 Float?
@@ -61,8 +62,22 @@ model Order {
   createdAt              DateTime      @default(now())
   updatedAt              DateTime      @updatedAt
   designs                OrderDesign[]
+  capacityReservations   OrderCapacityReservation[]
 
   @@map("orders")
+}
+
+model OrderCapacityReservation {
+  id             String   @id @default(uuid())
+  orderId        String
+  productionDate String
+  quantity       Int
+  createdAt      DateTime @default(now())
+  order          Order    @relation(fields: [orderId], references: [id], onDelete: Cascade)
+
+  @@index([productionDate])
+  @@index([orderId])
+  @@map("order_capacity_reservations")
 }
 
 model OrderDesign {

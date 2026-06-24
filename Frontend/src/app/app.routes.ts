@@ -2,6 +2,8 @@ import { Routes } from '@angular/router';
 
 import { adminGuard } from './core/auth/admin.guard';
 import { authGuard } from './core/auth/auth.guard';
+import { salesGuard } from './core/auth/sales.guard';
+import { schedulerGuard } from './core/auth/scheduler.guard';
 
 export const routes: Routes = [
   {
@@ -25,7 +27,15 @@ export const routes: Routes = [
         path: 'sales',
         loadComponent: () =>
           import('./features/sales/sales').then((component) => component.Sales),
+        canActivate: [salesGuard],
         title: 'Sales | Cloud9 Creatives',
+      },
+      {
+        path: 'scheduler',
+        loadComponent: () =>
+          import('./features/scheduler/scheduler').then((component) => component.Scheduler),
+        canActivate: [schedulerGuard],
+        title: 'Scheduler | Cloud9 Creatives',
       },
       {
         path: 'admin',
