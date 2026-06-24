@@ -59,6 +59,7 @@ export class Sales implements OnInit {
       quantity: [null as number | null, Validators.required],
       dueDate: ['', Validators.required],
       productionStartDate: ['', Validators.required],
+      includeSunday: [false],
       width: [null as number | null, Validators.required],
       height: [null as number | null, Validators.required],
       gusset: [null as number | null, Validators.required],
@@ -100,7 +101,7 @@ export class Sales implements OnInit {
   }
 
   protected getSuggestedCapacityPlan(): PlannedCapacityDay[] {
-    const { dueDate, productionStartDate, quantity } = this.orderForm.controls.bag.getRawValue();
+    const { dueDate, productionStartDate, includeSunday, quantity } = this.orderForm.controls.bag.getRawValue();
 
     if (!dueDate || !quantity || quantity < 1) {
       return [];
@@ -116,6 +117,11 @@ export class Sales implements OnInit {
     const earliestDate = new Date(`${earliestDateKey}T12:00:00`);
 
     while (remainingQuantity > 0 && date >= earliestDate) {
+      if (date.getDay() === 0 && !includeSunday) {
+        date.setDate(date.getDate() - 1);
+        continue;
+      }
+
       const isEarliestDate = this.toDateKey(date) === earliestDateKey;
       const dateKey = this.toDateKey(date);
       const bookedCapacity = this.capacityReservations()
@@ -330,6 +336,7 @@ export class Sales implements OnInit {
         quantity: order.bag.quantity ?? null,
         dueDate: order.bag.dueDate ?? '',
         productionStartDate: order.bag.productionStartDate ?? '',
+        includeSunday: order.bag.includeSunday ?? false,
         width: order.bag.width ?? null,
         height: order.bag.height ?? null,
         gusset: order.bag.gusset ?? null,
@@ -379,6 +386,7 @@ export class Sales implements OnInit {
         quantity: null,
         dueDate: '',
         productionStartDate: '',
+        includeSunday: false,
         width: null,
         height: null,
         gusset: null,

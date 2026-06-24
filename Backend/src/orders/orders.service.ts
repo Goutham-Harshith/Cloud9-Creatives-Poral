@@ -23,6 +23,7 @@ interface IncomingOrder {
     quantity: number | null;
     dueDate: string;
     productionStartDate: string;
+    includeSunday: boolean;
     width: number | null;
     height: number | null;
     gusset: number | null;
@@ -314,6 +315,7 @@ export class OrdersService {
       quantity: order.bag.quantity,
       dueDate: order.bag.dueDate,
       productionStartDate: order.bag.productionStartDate,
+      includeSunday: order.bag.includeSunday,
       width: order.bag.width,
       height: order.bag.height,
       gusset: order.bag.gusset,
@@ -356,6 +358,7 @@ export class OrdersService {
         quantity: order.quantity,
         dueDate: order.dueDate,
         productionStartDate: order.productionStartDate,
+        includeSunday: order.includeSunday,
         width: order.width,
         height: order.height,
         gusset: order.gusset,
@@ -435,6 +438,13 @@ export class OrdersService {
 
     while (remainingQuantity > 0 && date >= earliestDate) {
       const productionDate = this.toDateKey(date);
+      const isSunday = date.getDay() === 0;
+
+      if (isSunday && !order.bag.includeSunday) {
+        date.setDate(date.getDate() - 1);
+        continue;
+      }
+
       const isEarliestDate = productionDate === this.toDateKey(earliestDate);
       const availableCapacity = Math.max(DAILY_JUTE_CAPACITY - (bookedCapacity.get(productionDate) ?? 0), 0);
       const quantity = isEarliestDate
@@ -447,6 +457,10 @@ export class OrdersService {
       }
 
       date.setDate(date.getDate() - 1);
+    }
+
+    if (remainingQuantity > 0) {
+      throw new BadRequestException('There are no valid production days available in the selected date range.');
     }
 
     return plan;

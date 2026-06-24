@@ -45,6 +45,7 @@ model Order {
   quantity               Int?
   dueDate                String
   productionStartDate    String        @default("")
+  includeSunday          Boolean       @default(false)
   width                  Float?
   height                 Float?
   gusset                 Float?

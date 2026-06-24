@@ -1,0 +1,1 @@
+ALTER TABLE "orders" ADD COLUMN "includeSunday" BOOLEAN NOT NULL DEFAULT false;

@@ -181,6 +181,36 @@
   padding: 10px 12px;
 }
 
+.order-form .schedule-toggle {
+  align-content: center;
+  background: rgba(92, 32, 168, 0.035);
+  border: 1px solid rgba(92, 32, 168, 0.12);
+  border-radius: 8px;
+  display: grid;
+  gap: 3px 10px;
+  grid-template-columns: 18px 1fr;
+  padding: 11px 12px;
+}
+
+.schedule-toggle input {
+  accent-color: var(--color-primary);
+  grid-row: 1 / span 2;
+  min-height: 18px;
+  padding: 0;
+  width: 18px;
+}
+
+.order-form .schedule-toggle input:focus {
+  box-shadow: none;
+  outline: none;
+}
+
+.schedule-toggle small {
+  color: var(--color-muted);
+  font-size: 12px;
+  font-weight: 500;
+}
+
 .order-form input:focus,
 .order-form select:focus,
 .order-form textarea:focus {

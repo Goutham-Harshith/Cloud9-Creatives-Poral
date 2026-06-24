@@ -12,6 +12,7 @@ interface CreateOrderPayload {
     quantity: number | null;
     dueDate: string | null;
     productionStartDate: string | null;
+    includeSunday: boolean | null;
     width: number | null;
     height: number | null;
     gusset: number | null;
