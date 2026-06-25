@@ -1,7 +1,7 @@
 <section class="sales-page">
   <header class="sales-page__header">
-    <div>
-      <p class="sales-page__eyebrow">Sales</p>
+    <div class="page-heading">
+      <p class="eyebrow">Sales</p>
       <h1>{{ isEditMode ? 'Edit order' : 'Create new order' }}</h1>
       @if (isEditMode && orderNumber) {
         <p class="sales-page__subtitle">{{ orderNumber }}</p>

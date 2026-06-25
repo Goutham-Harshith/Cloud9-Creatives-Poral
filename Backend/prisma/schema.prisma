@@ -99,3 +99,12 @@ model OrderDesign {
   @@index([orderId])
   @@map("order_designs")
 }
+model AppSettings {
+  id        String   @id @default("app_settings")
+  value     Json
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@map("app_settings")
+}
+

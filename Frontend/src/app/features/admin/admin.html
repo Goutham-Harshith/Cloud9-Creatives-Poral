@@ -1,20 +1,56 @@
 <section class="admin-page">
   <header class="admin-page__header">
-    <div>
-      <p class="admin-page__eyebrow">Admin</p>
-      <h1>User management</h1>
-      <p>Manage internal access for sales, production, dispatch, and admin users.</p>
+    <div class="page-heading">
+      <p class="eyebrow">Admin</p>
+      <h1>{{ activeTab() === 'users' ? 'User management' : 'Application settings' }}</h1>
+      <p>
+        {{
+          activeTab() === 'users'
+            ? 'Manage internal access for sales, production, dispatch, and admin users.'
+            : 'Control calculator values shared by the web portal and mobile app.'
+        }}
+      </p>
     </div>
-    <button type="button" class="primary-button" (click)="startAddUser()">
-      <svg viewBox="0 0 24 24" aria-hidden="true">
-        <path d="M12 5v14M5 12h14" />
-      </svg>
-      <span>Add user</span>
-    </button>
+    @if (activeTab() === 'users') {
+      <button type="button" class="primary-button" (click)="startAddUser()">
+        <svg viewBox="0 0 24 24" aria-hidden="true">
+          <path d="M12 5v14M5 12h14" />
+        </svg>
+        <span>Add user</span>
+      </button>
+    } @else {
+      <button
+        type="button"
+        class="primary-button"
+        [disabled]="isSettingsSaving()"
+        (click)="saveSettings()"
+      >
+        <svg viewBox="0 0 24 24" aria-hidden="true">
+          <path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2Z" />
+          <path d="M17 21v-8H7v8M7 3v5h8" />
+        </svg>
+        <span>{{ isSettingsSaving() ? 'Saving...' : 'Save settings' }}</span>
+      </button>
+    }
   </header>
 
-  <div class="admin-layout">
-    <section class="user-panel">
+  <div class="tabs" role="tablist" aria-label="Admin sections">
+    @for (tab of adminTabs; track tab.id) {
+      <button
+        type="button"
+        role="tab"
+        [class.tab--active]="activeTab() === tab.id"
+        [attr.aria-selected]="activeTab() === tab.id"
+        (click)="selectAdminTab(tab.id)"
+      >
+        {{ tab.label }}
+      </button>
+    }
+  </div>
+
+  @if (activeTab() === 'users') {
+    <div class="admin-layout">
+      <section class="user-panel">
       <div class="panel-heading">
         <div>
           <h2>Users</h2>
@@ -84,9 +120,9 @@
           }
         }
       </div>
-    </section>
+      </section>
 
-    <aside class="user-form-panel">
+      <aside class="user-form-panel">
       <div class="panel-heading">
         <div>
           <h2>{{ isEditMode ? 'Edit user' : 'Add user' }}</h2>
@@ -154,8 +190,72 @@
           </button>
         </div>
       </form>
-    </aside>
-  </div>
+      </aside>
+    </div>
+  } @else {
+    <form [formGroup]="settingsForm" (ngSubmit)="saveSettings()" class="settings-form">
+      <section class="settings-panel">
+        <div class="panel-heading">
+          <div>
+            <h2>App constants</h2>
+            <p>These fields match the Ionic app constants exactly.</p>
+          </div>
+        </div>
+
+        @if (isSettingsLoading()) {
+          <div class="empty-state">Loading settings...</div>
+        } @else {
+          <div class="bag-settings-grid">
+            @for (section of settingsSections; track section.id) {
+              <article class="bag-settings-card" [class.bag-settings-card--open]="expandedSettingsSection() === section.id">
+                <button
+                  type="button"
+                  class="accordion-trigger"
+                  [attr.aria-expanded]="expandedSettingsSection() === section.id"
+                  [attr.aria-controls]="'settings-section-' + section.id"
+                  (click)="toggleSettingsSection(section.id)"
+                >
+                  <div>
+                    <h3>{{ section.title }}</h3>
+                    <span>{{ section.fields.length }} fields</span>
+                  </div>
+                  <svg viewBox="0 0 24 24" aria-hidden="true">
+                    <path d="m6 9 6 6 6-6" />
+                  </svg>
+                </button>
+
+                @if (expandedSettingsSection() === section.id) {
+                  <div class="bag-field-grid" [id]="'settings-section-' + section.id">
+                    @for (field of section.fields; track field.id) {
+                      @if (field.type === 'checkbox') {
+                        <label class="settings-toggle settings-toggle--compact">
+                          <input type="checkbox" [formControlName]="field.id" />
+                          <span>
+                            <strong>{{ field.label }}</strong>
+                          </span>
+                        </label>
+                      } @else {
+                        <label class="settings-field">
+                          <span>{{ field.label }}</span>
+                          <input type="number" min="0" step="0.01" placeholder="enter value" [formControlName]="field.id" />
+                        </label>
+                      }
+                    }
+                  </div>
+                }
+              </article>
+            }
+          </div>
+        }
+
+        <div class="settings-actions">
+          <button type="submit" class="primary-button" [disabled]="isSettingsSaving()">
+            {{ isSettingsSaving() ? 'Saving...' : 'Save settings' }}
+          </button>
+        </div>
+      </section>
+    </form>
+  }
 
   @if (userPendingDelete(); as user) {
     <div class="confirm-modal" role="dialog" aria-modal="true" aria-labelledby="delete-user-title">

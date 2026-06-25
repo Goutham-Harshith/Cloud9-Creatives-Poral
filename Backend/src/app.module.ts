@@ -3,6 +3,7 @@ import { ConfigModule, ConfigService } from '@nestjs/config';
 import { type JwtModuleOptions } from '@nestjs/jwt';
 import { JwtModule } from '@nestjs/jwt';
 
+import { AppSettingsModule } from './app-settings/app-settings.module';
 import { AuthModule } from './auth/auth.module';
 import { OrdersModule } from './orders/orders.module';
 import { UsersModule } from './users/users.module';
@@ -28,9 +29,11 @@ import { UsersModule } from './users/users.module';
         };
       },
     }),
+    AppSettingsModule,
     AuthModule,
     OrdersModule,
     UsersModule,
   ],
 })
 export class AppModule {}
+
