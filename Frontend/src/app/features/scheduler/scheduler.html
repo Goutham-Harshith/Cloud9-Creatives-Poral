@@ -44,6 +44,7 @@
             type="button"
             class="calendar-day"
             [class.calendar-day--muted]="!day.isCurrentMonth"
+            [class.calendar-day--past]="day.isPast"
             [class.calendar-day--selected]="day.key === selectedDate()"
             [class.calendar-day--available]="day.state === 'available'"
             [class.calendar-day--partial]="day.state === 'partial'"

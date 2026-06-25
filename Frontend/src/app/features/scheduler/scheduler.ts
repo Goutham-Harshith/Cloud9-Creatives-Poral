@@ -20,6 +20,7 @@ interface CalendarDay {
   date: Date;
   key: string;
   isCurrentMonth: boolean;
+  isPast: boolean;
   used: number;
   remaining: number;
   overCapacity: number;
@@ -45,6 +46,7 @@ export class Scheduler implements OnInit {
   protected readonly canEditOrders = this.authService.canAccessSales;
   protected readonly monthCursor = signal(new Date());
   protected readonly selectedDate = signal(this.toDateKey(new Date()));
+  private readonly todayKey = this.toDateKey(new Date());
   private readonly bookings = signal<CapacityBooking[]>([]);
 
   protected readonly monthLabel = computed(() =>
@@ -114,6 +116,7 @@ export class Scheduler implements OnInit {
         overCapacity,
         meterPercent: Math.min((used / DAILY_JUTE_CAPACITY) * 100, 100),
         isCurrentMonth: date.getMonth() === month.getMonth(),
+        isPast: key < this.todayKey,
         state: overCapacity > 0 ? 'over' : used === 0 ? 'available' : remaining === 0 ? 'full' : 'partial',
       };
     });

@@ -103,7 +103,11 @@ export class Dashboard implements OnInit {
     }
   }
 
-  protected formatDate(date: string): string {
+  protected formatDateTime(date: string): string {
+    if (!date) {
+      return '-';
+    }
+
     return this.toDate(date).toLocaleString('en-GB', {
       day: '2-digit',
       month: 'short',
@@ -111,6 +115,18 @@ export class Dashboard implements OnInit {
       hour: '2-digit',
       minute: '2-digit',
       hour12: true,
+    });
+  }
+
+  protected formatDate(date: string): string {
+    if (!date) {
+      return '-';
+    }
+
+    return this.toDate(date).toLocaleDateString('en-GB', {
+      day: '2-digit',
+      month: 'short',
+      year: 'numeric',
     });
   }
 
@@ -280,6 +296,7 @@ export class Dashboard implements OnInit {
     this.addLabelValue(pdf, 'Print', bag.print ?? '-', 112, y);
     y += 8;
     this.addLabelValue(pdf, 'Closure', bag.zip ?? '-', 18, y);
+    this.addLabelValue(pdf, 'Due date', this.formatDate(bag.dueDate ?? ''), 112, y);
     y += 10;
 
     if (bag.notes) {
@@ -529,7 +546,7 @@ export class Dashboard implements OnInit {
     this.addLabelValue(pdf, 'Quantity', `${order.bag.quantity ?? '-'}`, 18, y);
     this.addLabelValue(pdf, 'Due date', this.formatDate(order.bag.dueDate ?? ''), 112, y);
     y += 9;
-    this.addLabelValue(pdf, 'Updated', this.formatDate(order.updatedDate), 18, y);
+    this.addLabelValue(pdf, 'Updated', this.formatDateTime(order.updatedDate), 18, y);
     this.addLabelValue(pdf, 'Status', order.status, 112, y);
   }
 
