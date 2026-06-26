@@ -157,6 +157,9 @@ export class UpdateAppSettingsDto {
   version?: string | number;
 
   @IsOptional()
+  hideSettings?: boolean | string;
+
+  @IsOptional()
   withinStateCourier?: string | number;
 
   @IsOptional()

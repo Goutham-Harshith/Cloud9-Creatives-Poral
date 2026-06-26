@@ -416,6 +416,20 @@ export class Admin implements OnInit {
     });
   }
 
+  protected downloadSettingsJson(): void {
+    const settings = this.normalizeSettings(this.settingsForm.getRawValue());
+    const blob = new Blob([JSON.stringify(settings, null, 2)], {
+      type: 'application/json',
+    });
+    const downloadUrl = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+
+    link.href = downloadUrl;
+    link.download = `cloud9-app-settings-${new Date().toISOString().slice(0, 10)}.json`;
+    link.click();
+    URL.revokeObjectURL(downloadUrl);
+  }
+
   protected canDeleteUser(user: ManagedUser): boolean {
     return user.role !== 'SUPER_ADMIN';
   }

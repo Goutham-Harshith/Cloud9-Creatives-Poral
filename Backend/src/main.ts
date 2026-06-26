@@ -10,8 +10,14 @@ async function bootstrap() {
   const app = await NestFactory.create(AppModule);
   const configService = app.get(ConfigService);
 
+  const configuredOrigin = configService.get<string>('FRONTEND_ORIGIN') ?? 'http://localhost:4200';
+
   app.enableCors({
-    origin: configService.get<string>('FRONTEND_ORIGIN') ?? 'http://localhost:4200',
+    origin: (origin: string | undefined, callback: (error: Error | null, allow?: boolean) => void) => {
+      const isLocalDevOrigin = /^http:\/\/(localhost|127\.0\.0\.1):\d+$/.test(origin ?? '');
+
+      callback(null, !origin || origin === configuredOrigin || isLocalDevOrigin);
+    },
     credentials: true,
   });
 

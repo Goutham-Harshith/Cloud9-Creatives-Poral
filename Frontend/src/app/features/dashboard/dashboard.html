@@ -20,6 +20,24 @@
       }
     </div>
 
+    <div class="orders-toolbar">
+      <label class="order-search">
+        <svg viewBox="0 0 24 24" aria-hidden="true">
+          <path d="m21 21-4.3-4.3" />
+          <circle cx="11" cy="11" r="7" />
+        </svg>
+        <input
+          type="search"
+          placeholder="Search by order ID or size"
+          [value]="searchTerm()"
+          (input)="updateSearchTerm($event)"
+        />
+      </label>
+      @if (searchTerm()) {
+        <button type="button" class="clear-search-button" (click)="clearSearch()">Clear</button>
+      }
+    </div>
+
     <div class="table-wrap">
       <table>
         <thead>
@@ -103,7 +121,9 @@
             </tr>
           } @empty {
             <tr>
-              <td colspan="8" class="empty-state">No orders are available in this tab.</td>
+              <td colspan="8" class="empty-state">
+                {{ searchTerm() ? 'No orders match your search.' : 'No orders are available in this tab.' }}
+              </td>
             </tr>
           }
         </tbody>

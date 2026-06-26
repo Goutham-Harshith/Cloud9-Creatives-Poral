@@ -25,6 +25,76 @@
   padding: 20px 24px 0;
 }
 
+.orders-toolbar {
+  align-items: center;
+  display: flex;
+  gap: 12px;
+  justify-content: space-between;
+  padding: 16px 24px 0;
+}
+
+.order-search {
+  align-items: center;
+  background: #ffffff;
+  border: 1px solid var(--color-border);
+  border-radius: 10px;
+  color: var(--color-muted);
+  display: flex;
+  flex: 1 1 360px;
+  gap: 10px;
+  max-width: 460px;
+  min-height: 42px;
+  padding: 0 12px;
+}
+
+.order-search:focus-within {
+  border-color: var(--color-primary-light);
+  box-shadow: 0 0 0 3px rgba(92, 32, 168, 0.08);
+}
+
+.order-search svg {
+  fill: none;
+  flex: 0 0 18px;
+  height: 18px;
+  stroke: currentColor;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  stroke-width: 1.8;
+  width: 18px;
+}
+
+.order-search input {
+  border: 0;
+  color: var(--color-ink);
+  flex: 1 1 auto;
+  font: inherit;
+  font-size: 0.84rem;
+  min-width: 0;
+  outline: 0;
+}
+
+.order-search input::placeholder {
+  color: var(--color-muted);
+}
+
+.clear-search-button {
+  background: #ffffff;
+  border: 1px solid var(--color-border);
+  border-radius: 10px;
+  color: var(--color-text);
+  cursor: pointer;
+  font: inherit;
+  font-size: 0.78rem;
+  font-weight: 700;
+  min-height: 42px;
+  padding: 0 14px;
+}
+
+.clear-search-button:hover {
+  border-color: rgba(92, 32, 168, 0.18);
+  color: var(--color-primary);
+}
+
 .table-wrap::-webkit-scrollbar {
   display: none;
 }
@@ -280,15 +350,7 @@ td strong {
   height: 160px;
 }
 
-@media (max-width: 760px) {
-  .orders-page {
-    gap: 22px;
-  }
-
-  .tabs {
-    padding-inline: 14px;
-  }
-
+@media (max-width: 1100px) {
   th,
   td {
     padding: 15px 18px;
@@ -338,6 +400,32 @@ td strong {
   tbody tr:hover .due-cell,
   tbody tr:hover .actions-cell {
     background: #fcfafd;
+  }
+}
+
+@media (max-width: 760px) {
+  .orders-page {
+    gap: 22px;
+  }
+
+  .tabs {
+    padding-inline: 14px;
+  }
+
+  .orders-toolbar {
+    align-items: stretch;
+    flex-direction: column;
+    padding: 14px 14px 0;
+  }
+
+  .order-search {
+    flex-basis: auto;
+    max-width: none;
+    width: 100%;
+  }
+
+  .clear-search-button {
+    width: 100%;
   }
 
   .pagination {

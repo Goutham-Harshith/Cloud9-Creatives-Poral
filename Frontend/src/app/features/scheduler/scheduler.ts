@@ -28,7 +28,7 @@ interface CalendarDay {
   state: CapacityState;
 }
 
-const DAILY_JUTE_CAPACITY = 160;
+const DEFAULT_DAILY_JUTE_CAPACITY = 160;
 
 @Component({
   selector: 'app-scheduler',
@@ -42,7 +42,7 @@ export class Scheduler implements OnInit {
   private readonly router = inject(Router);
   private readonly orderService = inject(OrderService);
 
-  protected readonly dailyCapacity = DAILY_JUTE_CAPACITY;
+  protected dailyCapacity = DEFAULT_DAILY_JUTE_CAPACITY;
   protected readonly canEditOrders = this.authService.canAccessSales;
   protected readonly monthCursor = signal(new Date());
   protected readonly selectedDate = signal(this.toDateKey(new Date()));
@@ -105,8 +105,8 @@ export class Scheduler implements OnInit {
       const used = this.bookings()
         .filter((booking) => booking.date === key)
         .reduce((total, booking) => total + booking.quantity, 0);
-      const remaining = Math.max(DAILY_JUTE_CAPACITY - used, 0);
-      const overCapacity = Math.max(used - DAILY_JUTE_CAPACITY, 0);
+      const remaining = Math.max(this.dailyCapacity - used, 0);
+      const overCapacity = Math.max(used - this.dailyCapacity, 0);
 
       return {
         date,
@@ -114,7 +114,7 @@ export class Scheduler implements OnInit {
         used,
         remaining,
         overCapacity,
-        meterPercent: Math.min((used / DAILY_JUTE_CAPACITY) * 100, 100),
+        meterPercent: Math.min((used / this.dailyCapacity) * 100, 100),
         isCurrentMonth: date.getMonth() === month.getMonth(),
         isPast: key < this.todayKey,
         state: overCapacity > 0 ? 'over' : used === 0 ? 'available' : remaining === 0 ? 'full' : 'partial',
@@ -136,6 +136,7 @@ export class Scheduler implements OnInit {
 
     this.orderService.getCapacitySchedule(this.toDateKey(firstVisibleDay), this.toDateKey(lastVisibleDay)).subscribe({
       next: (schedule) => {
+        this.dailyCapacity = schedule.dailyCapacity;
         this.bookings.set(
           schedule.reservations.map((reservation) => ({
             orderId: reservation.order.id,

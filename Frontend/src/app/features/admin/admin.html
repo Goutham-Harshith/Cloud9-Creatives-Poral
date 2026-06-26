@@ -200,6 +200,18 @@
             <h2>App constants</h2>
             <p>These fields match the Ionic app constants exactly.</p>
           </div>
+          <button
+            type="button"
+            class="secondary-button"
+            [disabled]="isSettingsLoading()"
+            (click)="downloadSettingsJson()"
+          >
+            <svg viewBox="0 0 24 24" aria-hidden="true">
+              <path d="M12 3v12M7 10l5 5 5-5" />
+              <path d="M5 21h14" />
+            </svg>
+            <span>Download JSON</span>
+          </button>
         </div>
 
         @if (isSettingsLoading()) {

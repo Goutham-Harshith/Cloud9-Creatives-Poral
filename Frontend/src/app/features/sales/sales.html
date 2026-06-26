@@ -57,7 +57,7 @@
       
       <label>
         <span class="required-label">Due date</span>
-        <input type="date" formControlName="dueDate" [min]="minimumScheduleDate" (change)="refreshCapacityPlan()" />
+        <input type="date" formControlName="dueDate" [min]="minimumScheduleDate" (change)="handleScheduleDateChange()" />
       </label>
 
       <label>
@@ -67,7 +67,7 @@
           formControlName="productionStartDate"
           [min]="minimumScheduleDate"
           [max]="orderForm.controls.bag.controls.dueDate.value || null"
-          (change)="refreshCapacityPlan()"
+          (change)="handleScheduleDateChange()"
         />
       </label>
 
@@ -266,7 +266,9 @@
       <button type="button" class="secondary-button" (click)="goBack()" *ngIf="currentStep > 1">
         Back
       </button>
-      <button type="button" *ngIf="currentStep < 3" (click)="goNext()">Next</button>
+      <button type="button" *ngIf="currentStep < 3" [disabled]="isPricingLoading" (click)="goNext()">
+        {{ isPricingLoading ? 'Loading price...' : 'Next' }}
+      </button>
       <button type="submit" *ngIf="currentStep === 3" [disabled]="isSubmitting">
         @if (isSubmitting) {
           {{ isEditMode ? 'Updating...' : 'Creating...' }}
@@ -276,6 +278,62 @@
       </button>
     </div>
   </form>
+
+  @if (pricingPreview(); as pricing) {
+    <div class="pricing-preview-modal" role="dialog" aria-modal="true" aria-label="Bag pricing">
+      <article class="pricing-preview">
+        <div class="pricing-preview__body">
+          <div class="pricing-preview__heading">
+            <span>Review pricing</span>
+            <strong>Confirm bag estimate</strong>
+          </div>
+          <div class="pricing-preview__tools">
+            <button type="button" (click)="openPricingCalculator()">Calculator</button>
+          </div>
+          <img [src]="pricing.imageUrl" alt="Selected bag preview" />
+          <p class="pricing-preview__price">Price : {{ pricing.price }}/-</p>
+
+          <div class="pricing-preview__description">
+            <p>Description :</p>
+            <p>{{ pricing.summary }}</p>
+            <ul>
+              <li *ngFor="let item of pricing.items">{{ item }}</li>
+            </ul>
+          </div>
+
+          @if (pricing.showMargin) {
+            <p class="pricing-preview__margin">
+              Margin per bag is {{ pricing.marginAmount }}/- ({{ pricing.marginPercent }})
+            </p>
+          }
+
+          <div class="pricing-preview__actions">
+            <button type="button" class="pricing-preview__back" (click)="closePricingPreview()">Go back</button>
+            <button type="button" class="pricing-preview__continue" (click)="confirmPricingPreview()">Continue</button>
+          </div>
+        </div>
+
+        @if (showPricingCalculator()) {
+          <div class="pricing-calculator" role="dialog" aria-modal="true" aria-label="Quantity price calculator">
+            <div class="pricing-calculator__content">
+              <strong>Normal : {{ pricing.normalPrice }}, Bulk : {{ pricing.bulkPrice }}</strong>
+              <label>
+                <span>Quantity</span>
+                <input type="number" min="1" [(ngModel)]="calculatorQuantity" [ngModelOptions]="{ standalone: true }" />
+              </label>
+              @if (calculatorResult(); as result) {
+                <p>The best price for {{ result.quantity }} {{ pricing.fabric }} bags is {{ result.price }}rs</p>
+              }
+              <div>
+                <button type="button" (click)="calculateQuantityPrice(pricing)">Get price</button>
+                <button type="button" (click)="closePricingCalculator()">Close</button>
+              </div>
+            </div>
+          </div>
+        }
+      </article>
+    </div>
+  }
 
   @if (previewDialog(); as preview) {
     <div class="preview-modal" role="dialog" aria-modal="true" [attr.aria-label]="preview.name">

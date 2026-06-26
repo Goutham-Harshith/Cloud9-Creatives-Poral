@@ -22,6 +22,7 @@ export class Dashboard implements OnInit {
   private readonly router = inject(Router);
 
   protected readonly activeTab = signal<OrderTab>('current');
+  protected readonly searchTerm = signal('');
   protected readonly currentPage = signal(1);
   protected readonly pageSize = signal(25);
   protected readonly pageSizeOptions = [10, 25, 50, 75, 100];
@@ -42,6 +43,7 @@ export class Dashboard implements OnInit {
 
   protected readonly filteredOrders = computed(() => {
     const activeTab = this.activeTab();
+    const searchTerm = this.searchTerm().trim().toLowerCase();
 
     return this.orders()
       .filter((order) => {
@@ -56,6 +58,17 @@ export class Dashboard implements OnInit {
         }
 
         return order.status !== 'Complete' && dueDate >= this.today;
+      })
+      .filter((order) => {
+        if (!searchTerm) {
+          return true;
+        }
+
+        return [
+          order.id,
+          order.orderNumber,
+          order.size,
+        ].some((value) => value.toLowerCase().includes(searchTerm));
       })
       .sort(
         (first, second) => this.toDate(first.dueDate).getTime() - this.toDate(second.dueDate).getTime(),
@@ -94,6 +107,16 @@ export class Dashboard implements OnInit {
 
   protected changePageSize(event: Event): void {
     this.pageSize.set(Number((event.target as HTMLSelectElement).value));
+    this.currentPage.set(1);
+  }
+
+  protected updateSearchTerm(event: Event): void {
+    this.searchTerm.set((event.target as HTMLInputElement).value);
+    this.currentPage.set(1);
+  }
+
+  protected clearSearch(): void {
+    this.searchTerm.set('');
     this.currentPage.set(1);
   }
 

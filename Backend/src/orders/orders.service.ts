@@ -7,7 +7,8 @@ import { extname, join } from 'node:path';
 import { PrismaService } from '../prisma/prisma.service';
 
 type DashboardOrderStatus = 'Ready to pick' | 'In progress' | 'Complete';
-const DAILY_JUTE_CAPACITY = 160;
+const DEFAULT_DAILY_JUTE_CAPACITY = 160;
+const SETTINGS_ID = 'app_settings';
 
 export interface UploadedOrderFile {
   fieldname: string;
@@ -214,6 +215,7 @@ export class OrdersService {
   }
 
   async findCapacityReservations(from?: string, to?: string) {
+    const dailyCapacity = await this.getDailyJuteCapacity();
     const reservations = await this.prisma.orderCapacityReservation.findMany({
       where: {
         productionDate: {
@@ -237,7 +239,7 @@ export class OrdersService {
     });
 
     return {
-      dailyCapacity: DAILY_JUTE_CAPACITY,
+      dailyCapacity,
       reservations: reservations.map((reservation) => ({
         id: reservation.id,
         date: reservation.productionDate,
@@ -399,6 +401,7 @@ export class OrdersService {
       return [];
     }
 
+    const dailyCapacity = await this.getDailyJuteCapacity();
     const dueDate = this.parseDate(order.bag.dueDate);
     const requestedStartDate = this.parseDate(order.bag.productionStartDate);
     const today = new Date();
@@ -446,7 +449,7 @@ export class OrdersService {
       }
 
       const isEarliestDate = productionDate === this.toDateKey(earliestDate);
-      const availableCapacity = Math.max(DAILY_JUTE_CAPACITY - (bookedCapacity.get(productionDate) ?? 0), 0);
+      const availableCapacity = Math.max(dailyCapacity - (bookedCapacity.get(productionDate) ?? 0), 0);
       const quantity = isEarliestDate
         ? remainingQuantity
         : Math.min(remainingQuantity, availableCapacity);
@@ -464,6 +467,20 @@ export class OrdersService {
     }
 
     return plan;
+  }
+
+  private async getDailyJuteCapacity(): Promise<number> {
+    const settings = await this.prisma.appSettings.findUnique({
+      where: {
+        id: SETTINGS_ID,
+      },
+    });
+    const value = settings?.value as Record<string, unknown> | null | undefined;
+    const configuredCapacity = Number(value?.['currentCapacity']);
+
+    return Number.isFinite(configuredCapacity) && configuredCapacity > 0
+      ? configuredCapacity
+      : DEFAULT_DAILY_JUTE_CAPACITY;
   }
 
   private parseDate(value: string): Date {

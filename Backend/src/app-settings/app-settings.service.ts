@@ -59,6 +59,7 @@ const DEFAULT_SETTINGS = {
   packing: '',
   currentCapacity: '',
   version: '',
+  hideSettings: false,
   withinStateCourier: '',
   otherStateCourier: '',
   cottonCost: '',
@@ -132,13 +133,25 @@ export class AppSettingsService {
     return Object.fromEntries(
       Object.entries(DEFAULT_SETTINGS).map(([key, defaultValue]) => [
         key,
-        this.normalizeTextValue(value?.[key] ?? defaultValue),
+        this.normalizeValue(key, value?.[key] ?? defaultValue),
       ]),
     );
   }
 
+  private normalizeValue(key: string, value: unknown): string | boolean {
+    if (key === 'hideSettings') {
+      return this.normalizeBooleanValue(value);
+    }
+
+    return this.normalizeTextValue(value);
+  }
+
   private normalizeTextValue(value: unknown): string {
     return value === null || value === undefined ? '' : String(value);
+  }
+
+  private normalizeBooleanValue(value: unknown): boolean {
+    return value === true || value === 'true';
   }
 }
 

@@ -8,8 +8,6 @@ import { AppSettingsService } from './app-settings.service';
 import { UpdateAppSettingsDto } from './dto/update-app-settings.dto';
 
 @Controller('app-settings')
-@UseGuards(JwtAuthGuard, RolesGuard)
-@Roles(UserRole.SUPER_ADMIN, UserRole.ADMIN)
 export class AppSettingsController {
   constructor(private readonly appSettingsService: AppSettingsService) {}
 
@@ -19,6 +17,8 @@ export class AppSettingsController {
   }
 
   @Put()
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles(UserRole.SUPER_ADMIN, UserRole.ADMIN)
   update(@Body() updateAppSettingsDto: UpdateAppSettingsDto) {
     return this.appSettingsService.update(updateAppSettingsDto);
   }
