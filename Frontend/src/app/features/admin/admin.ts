@@ -71,6 +71,7 @@ export class Admin implements OnInit {
       fields: [
         { id: 'currentCapacity', label: 'Current capacity' },
         { id: 'version', label: 'Version' },
+        { id: 'hideSettings', label: 'Show sales margin', type: 'checkbox' },
         { id: 'withinStateCourier', label: 'Within state courier' },
         { id: 'otherStateCourier', label: 'Other state courier' },
       ],
@@ -203,6 +204,8 @@ export class Admin implements OnInit {
   protected readonly deletingUserId = signal<string | null>(null);
   protected readonly editingUser = signal<ManagedUser | null>(null);
   protected readonly userPendingDelete = signal<ManagedUser | null>(null);
+  protected readonly shouldConfirmHideSettings = signal(false);
+  protected readonly savedHideSettings = signal(false);
   protected readonly currentUserId = this.authService.userId;
 
   protected readonly sortedUsers = computed(() => {
@@ -401,11 +404,31 @@ export class Admin implements OnInit {
       return;
     }
 
+    if (this.settingsForm.controls.hideSettings.value && !this.savedHideSettings()) {
+      this.shouldConfirmHideSettings.set(true);
+      return;
+    }
+
+    this.persistSettings();
+  }
+
+  protected cancelHideSettingsConfirmation(): void {
+    this.shouldConfirmHideSettings.set(false);
+  }
+
+  protected confirmHideSettingsSave(): void {
+    this.shouldConfirmHideSettings.set(false);
+    this.persistSettings();
+  }
+
+  private persistSettings(): void {
     this.isSettingsSaving.set(true);
 
     this.appSettingsService.updateSettings(this.normalizeSettings(this.settingsForm.getRawValue())).subscribe({
       next: (settings) => {
-        this.settingsForm.reset(this.normalizeSettings(settings));
+        const normalizedSettings = this.normalizeSettings(settings);
+        this.settingsForm.reset(normalizedSettings);
+        this.savedHideSettings.set(normalizedSettings.hideSettings);
         this.isSettingsSaving.set(false);
         this.toastrService.success('Settings saved successfully');
       },
@@ -471,11 +494,15 @@ export class Admin implements OnInit {
 
     this.appSettingsService.getSettings().subscribe({
       next: (settings) => {
-        this.settingsForm.reset(this.normalizeSettings(settings));
+        const normalizedSettings = this.normalizeSettings(settings);
+        this.settingsForm.reset(normalizedSettings);
+        this.savedHideSettings.set(normalizedSettings.hideSettings);
         this.isSettingsLoading.set(false);
       },
       error: (error) => {
-        this.settingsForm.reset(this.normalizeSettings());
+        const normalizedSettings = this.normalizeSettings();
+        this.settingsForm.reset(normalizedSettings);
+        this.savedHideSettings.set(normalizedSettings.hideSettings);
         this.isSettingsLoading.set(false);
         this.toastrService.error(this.getErrorMessage(error, 'Unable to load app settings.'));
       },
@@ -536,6 +563,7 @@ export class Admin implements OnInit {
       packing: [''],
       currentCapacity: [''],
       version: [''],
+      hideSettings: [false],
       withinStateCourier: [''],
       otherStateCourier: [''],
       cottonCost: [''],
@@ -625,6 +653,7 @@ export class Admin implements OnInit {
       packing: this.normalizeTextValue(settings?.packing),
       currentCapacity: this.normalizeTextValue(settings?.currentCapacity),
       version: this.normalizeTextValue(settings?.version),
+      hideSettings: this.normalizeBooleanValue(settings?.hideSettings),
       withinStateCourier: this.normalizeTextValue(settings?.withinStateCourier),
       otherStateCourier: this.normalizeTextValue(settings?.otherStateCourier),
       cottonCost: this.normalizeTextValue(settings?.cottonCost),
@@ -662,6 +691,10 @@ export class Admin implements OnInit {
 
   private normalizeTextValue(value: unknown): string {
     return value === null || value === undefined ? '' : String(value);
+  }
+
+  private normalizeBooleanValue(value: unknown): boolean {
+    return value === true || value === 'true';
   }
 
   private setProfileControlsDisabled(disabled: boolean, isCurrentSuperAdmin = false): void {

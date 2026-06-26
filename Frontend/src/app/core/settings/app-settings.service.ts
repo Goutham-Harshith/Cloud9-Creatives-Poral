@@ -59,6 +59,7 @@ export interface AppSettings {
   packing: string;
   currentCapacity: string;
   version: string;
+  hideSettings: boolean;
   withinStateCourier: string;
   otherStateCourier: string;
   cottonCost: string;
@@ -107,3 +108,4 @@ export class AppSettingsService {
     return this.http.put<AppSettings>(`${API_BASE_URL}/app-settings`, settings);
   }
 }
+

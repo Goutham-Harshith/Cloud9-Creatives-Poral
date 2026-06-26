@@ -298,4 +298,37 @@
       </div>
     </div>
   }
+
+  @if (shouldConfirmHideSettings()) {
+    <div class="confirm-modal" role="dialog" aria-modal="true" aria-labelledby="hide-settings-title">
+      <div class="confirm-modal__content">
+        <div>
+          <span class="confirm-modal__eyebrow">Confirm setting</span>
+          <h2 id="hide-settings-title">Enable sales margin visibility?</h2>
+          <p>
+            This will show margin details to the sales team. It is not recommended unless you intentionally want
+            sales users to see this information.
+          </p>
+        </div>
+        <div class="confirm-modal__actions">
+          <button
+            type="button"
+            class="secondary-button"
+            [disabled]="isSettingsSaving()"
+            (click)="cancelHideSettingsConfirmation()"
+          >
+            Cancel
+          </button>
+          <button
+            type="button"
+            class="danger-button"
+            [disabled]="isSettingsSaving()"
+            (click)="confirmHideSettingsSave()"
+          >
+            {{ isSettingsSaving() ? 'Saving...' : 'Yes, enable' }}
+          </button>
+        </div>
+      </div>
+    </div>
+  }
 </section>

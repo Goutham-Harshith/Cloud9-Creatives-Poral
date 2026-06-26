@@ -124,7 +124,7 @@ export class AppSettingsService {
       },
     });
 
-    return settings.value;
+    return this.normalizeSettings(settings.value);
   }
 
   private normalizeSettings(settings: unknown) {

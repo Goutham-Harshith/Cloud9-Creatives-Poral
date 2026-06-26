@@ -7,6 +7,7 @@ import { ToastrService } from 'ngx-toastr';
 
 import { OrderDetails, OrderService, UploadedOrderFile } from '../../core/orders/order.service';
 import { AppSettings, AppSettingsService } from '../../core/settings/app-settings.service';
+import { AuthService } from '../../core/auth/auth.service';
 
 type WizardStep = 1 | 2 | 3;
 
@@ -44,7 +45,8 @@ export class Sales implements OnInit {
     private route: ActivatedRoute,
     private toastrService: ToastrService,
     private orderService: OrderService,
-    private appSettingsService: AppSettingsService
+    private appSettingsService: AppSettingsService,
+    private authService: AuthService
 
   ){}
 
@@ -518,7 +520,7 @@ export class Sales implements OnInit {
       items,
       marginAmount: Math.floor(profit),
       marginPercent: '65%',
-      showMargin: !this.toBoolean((settings as AppSettings & { hideSettings?: string | boolean }).hideSettings),
+      showMargin: ['SUPER_ADMIN', 'ADMIN'].includes(this.authService.userRole),
     };
   }
 
