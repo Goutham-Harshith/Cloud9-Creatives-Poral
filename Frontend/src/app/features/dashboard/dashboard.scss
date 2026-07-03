@@ -163,6 +163,7 @@ tbody tr:last-child td {
 }
 
 tbody tr {
+  position: relative;
   transition: background-color 160ms ease;
 }
 
@@ -369,6 +370,7 @@ td strong {
   align-items: center;
   display: inline-flex;
   position: relative;
+  z-index: 1;
 }
 
 .download-menu > .action-button:first-child {
@@ -399,7 +401,7 @@ td strong {
   position: absolute;
   right: 0;
   top: calc(100% + 8px);
-  z-index: 12;
+  z-index: 40;
 }
 
 .download-menu__list button {
@@ -864,7 +866,7 @@ td strong {
   height: 160px;
 }
 
-@media (max-width: 1100px) {
+@media (max-width: 1280px) {
   th,
   td {
     padding: 15px 18px;
@@ -875,6 +877,10 @@ td strong {
     overflow-y: visible;
     position: relative;
     -webkit-overflow-scrolling: touch;
+  }
+
+  .table-wrap:has(.download-menu__list) {
+    padding-bottom: 172px;
   }
 
   table {
@@ -888,6 +894,14 @@ td strong {
     position: sticky;
     z-index: 2;
     background: var(--color-surface);
+  }
+
+  tbody tr:has(.download-menu__list) {
+    z-index: 8;
+  }
+
+  .actions-cell:has(.download-menu__list) {
+    z-index: 12;
   }
 
   .due-heading,
