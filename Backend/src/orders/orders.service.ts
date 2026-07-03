@@ -1,5 +1,5 @@
 import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
-import { OrderStatus, type Order, type OrderDesign } from '@prisma/client';
+import { OrderArtifactType, OrderStatus, Prisma, type Order, type OrderDesign } from '@prisma/client';
 import { mkdir, rm, writeFile } from 'node:fs/promises';
 import { randomUUID } from 'node:crypto';
 import { extname, join } from 'node:path';
@@ -16,6 +16,26 @@ export interface UploadedOrderFile {
   mimetype: string;
   size: number;
   buffer: Buffer;
+}
+
+export interface AuthenticatedUser {
+  sub: string;
+  email: string;
+  role: string;
+}
+
+interface ArtifactActor {
+  id: string | null;
+  name: string | null;
+  email: string | null;
+  role: string | null;
+}
+
+interface CreateArtifactOptions {
+  title: string;
+  description: string;
+  actor?: AuthenticatedUser;
+  metadata?: Prisma.InputJsonValue;
 }
 
 interface IncomingOrder {
@@ -62,6 +82,15 @@ export interface StoredDesign {
   } | null;
 }
 
+export interface StoredCompletionProof {
+  originalName: string;
+  storedName: string;
+  mimeType: string;
+  size: number;
+  path: string;
+  url: string;
+}
+
 export interface StoredOrder {
   id: string;
   orderNumber: string;
@@ -70,6 +99,7 @@ export interface StoredOrder {
   bag: IncomingOrder['bag'];
   customer: IncomingOrder['customer'];
   designs: StoredDesign[];
+  completionProof: StoredCompletionProof | null;
 }
 
 type OrderWithDesigns = Order & { designs: OrderDesign[] };
@@ -114,7 +144,12 @@ export class OrdersService {
     return this.toStoredOrder(createdOrder);
   }
 
-  async update(id: string, rawOrder: string, files: UploadedOrderFile[]): Promise<StoredOrder> {
+  async update(
+    id: string,
+    rawOrder: string,
+    files: UploadedOrderFile[],
+    actor?: AuthenticatedUser,
+  ): Promise<StoredOrder> {
     const order = this.parseOrder(rawOrder);
     const existingOrder = await this.prisma.order.findUnique({
       where: {
@@ -160,6 +195,15 @@ export class OrdersService {
           },
         },
       });
+    });
+
+    await this.createArtifact(id, OrderArtifactType.ORDER_EDITED, {
+      title: 'Order edited',
+      description: 'Order details were updated.',
+      actor,
+      metadata: {
+        orderNumber: updatedOrder.orderNumber,
+      },
     });
 
     return this.toStoredOrder(updatedOrder);
@@ -214,6 +258,45 @@ export class OrdersService {
     };
   }
 
+  async findArtifacts(id: string) {
+    const order = await this.prisma.order.findUnique({
+      where: {
+        id,
+      },
+      select: {
+        id: true,
+      },
+    });
+
+    if (!order) {
+      throw new NotFoundException('Order not found.');
+    }
+
+    const artifacts = await this.prisma.orderArtifact.findMany({
+      where: {
+        orderId: id,
+      },
+      orderBy: {
+        createdAt: 'desc',
+      },
+    });
+
+    return artifacts.map((artifact) => ({
+      id: artifact.id,
+      type: artifact.type,
+      title: artifact.title,
+      description: artifact.description,
+      createdAt: artifact.createdAt.toISOString(),
+      actor: {
+        id: artifact.actorUserId,
+        name: artifact.actorName,
+        email: artifact.actorEmail,
+        role: artifact.actorRole,
+      },
+      metadata: artifact.metadata,
+    }));
+  }
+
   async findCapacityReservations(from?: string, to?: string) {
     const dailyCapacity = await this.getDailyJuteCapacity();
     const reservations = await this.prisma.orderCapacityReservation.findMany({
@@ -254,16 +337,38 @@ export class OrdersService {
     };
   }
 
-  async updateStatus(id: string, dashboardStatus: string) {
+  async updateStatus(id: string, dashboardStatus: string, actor?: AuthenticatedUser) {
     const status = this.toStoredStatus(dashboardStatus);
 
     try {
+      const existingOrder = await this.prisma.order.findUnique({
+        where: {
+          id,
+        },
+      });
+
+      if (!existingOrder) {
+        throw new NotFoundException('Order not found.');
+      }
+
       const updatedOrder = await this.prisma.order.update({
         where: {
           id,
         },
         data: {
           status,
+        },
+      });
+      const fromStatus = this.toDashboardStatus(existingOrder.status);
+      const toStatus = this.toDashboardStatus(updatedOrder.status);
+
+      await this.createArtifact(id, OrderArtifactType.STATUS_UPDATED, {
+        title: 'Status updated',
+        description: `Status changed from ${fromStatus} to ${toStatus}.`,
+        actor,
+        metadata: {
+          fromStatus,
+          toStatus,
         },
       });
 
@@ -275,6 +380,60 @@ export class OrdersService {
     } catch {
       throw new NotFoundException('Order not found.');
     }
+  }
+
+  async completeWithProof(
+    id: string,
+    completionProof: UploadedOrderFile,
+    actor?: AuthenticatedUser,
+  ) {
+    const existingOrder = await this.prisma.order.findUnique({
+      where: {
+        id,
+      },
+    });
+
+    if (!existingOrder) {
+      throw new NotFoundException('Order not found.');
+    }
+
+    const storedProof = await this.storeCompletionProof(id, completionProof);
+    const updatedOrder = await this.prisma.order.update({
+      where: {
+        id,
+      },
+      data: {
+        status: OrderStatus.COMPLETE,
+        completionProofOriginalName: storedProof.originalName,
+        completionProofStoredName: storedProof.storedName,
+        completionProofMimeType: storedProof.mimeType,
+        completionProofSize: storedProof.size,
+        completionProofPath: storedProof.path,
+        completionProofUrl: storedProof.url,
+      },
+    });
+    const fromStatus = this.toDashboardStatus(existingOrder.status);
+    const toStatus = this.toDashboardStatus(updatedOrder.status);
+
+    await this.createArtifact(id, OrderArtifactType.PROOF_UPLOADED, {
+      title: 'Completion proof uploaded',
+      description: 'Completed bag proof was uploaded and the order was marked complete.',
+      actor,
+      metadata: {
+        fileName: storedProof.originalName,
+        fileUrl: storedProof.url,
+        filePath: storedProof.path,
+        fromStatus,
+        toStatus,
+      },
+    });
+
+    return {
+      id: updatedOrder.id,
+      orderNumber: updatedOrder.orderNumber,
+      status: this.toDashboardStatus(updatedOrder.status),
+      completionProof: storedProof,
+    };
   }
 
   async delete(id: string) {
@@ -349,6 +508,67 @@ export class OrdersService {
     };
   }
 
+  private async createArtifact(
+    orderId: string,
+    type: OrderArtifactType,
+    options: CreateArtifactOptions,
+  ) {
+    const actor = await this.resolveArtifactActor(options.actor);
+
+    return this.prisma.orderArtifact.create({
+      data: {
+        orderId,
+        type,
+        title: options.title,
+        description: options.description,
+        actorUserId: actor.id,
+        actorName: actor.name,
+        actorEmail: actor.email,
+        actorRole: actor.role,
+        metadata: options.metadata ?? Prisma.JsonNull,
+      },
+    });
+  }
+
+  private async resolveArtifactActor(actor?: AuthenticatedUser): Promise<ArtifactActor> {
+    if (!actor?.sub) {
+      return {
+        id: null,
+        name: null,
+        email: null,
+        role: null,
+      };
+    }
+
+    const user = await this.prisma.user.findUnique({
+      where: {
+        id: actor.sub,
+      },
+      select: {
+        id: true,
+        name: true,
+        email: true,
+        role: true,
+      },
+    });
+
+    if (!user) {
+      return {
+        id: actor.sub,
+        name: null,
+        email: actor.email ?? null,
+        role: actor.role ?? null,
+      };
+    }
+
+    return {
+      id: user.id,
+      name: user.name,
+      email: user.email,
+      role: user.role,
+    };
+  }
+
   private toStoredOrder(order: OrderWithDesigns): StoredOrder {
     return {
       id: order.id,
@@ -393,6 +613,21 @@ export class OrdersService {
               }
             : null,
       })),
+      completionProof:
+        order.completionProofOriginalName &&
+        order.completionProofStoredName &&
+        order.completionProofMimeType &&
+        order.completionProofPath &&
+        order.completionProofUrl
+          ? {
+              originalName: order.completionProofOriginalName,
+              storedName: order.completionProofStoredName,
+              mimeType: order.completionProofMimeType,
+              size: order.completionProofSize ?? 0,
+              path: order.completionProofPath,
+              url: order.completionProofUrl,
+            }
+          : null,
     };
   }
 
@@ -542,6 +777,28 @@ export class OrdersService {
         };
       }),
     );
+  }
+
+  private async storeCompletionProof(
+    id: string,
+    file: UploadedOrderFile,
+  ): Promise<StoredCompletionProof> {
+    const extension = extname(file.originalname);
+    const storedName = `completion-proof-${randomUUID()}${extension}`;
+    const orderUploadRoot = join(this.uploadsRoot, id);
+    const relativePath = `/uploads/orders/${id}/${storedName}`;
+
+    await mkdir(orderUploadRoot, { recursive: true });
+    await writeFile(join(orderUploadRoot, storedName), file.buffer);
+
+    return {
+      originalName: file.originalname,
+      storedName,
+      mimeType: file.mimetype,
+      size: file.size,
+      path: relativePath,
+      url: `${process.env.BACKEND_PUBLIC_URL ?? 'http://localhost:3000'}${relativePath}`,
+    };
   }
 
   private mapFilesByDesignIndex(files: UploadedOrderFile[]) {

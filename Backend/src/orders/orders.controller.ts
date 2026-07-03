@@ -9,13 +9,18 @@ import {
   Post,
   Query,
   Put,
+  Req,
+  UploadedFile,
   UploadedFiles,
+  UseGuards,
   UseInterceptors,
 } from '@nestjs/common';
-import { AnyFilesInterceptor } from '@nestjs/platform-express';
+import { AnyFilesInterceptor, FileInterceptor } from '@nestjs/platform-express';
+import { Request } from 'express';
 
+import { JwtAuthGuard } from '../auth/jwt-auth.guard';
 import { OrdersService } from './orders.service';
-import { type UploadedOrderFile } from './orders.service';
+import { type AuthenticatedUser, type UploadedOrderFile } from './orders.service';
 
 const MAX_ORDER_UPLOAD_FILE_SIZE = 125 * 1024 * 1024;
 const MAX_ORDER_UPLOAD_FILES = 50;
@@ -40,9 +45,49 @@ export class OrdersController {
     return this.ordersService.findOne(id);
   }
 
+  @Get(':id/artifacts')
+  @UseGuards(JwtAuthGuard)
+  getArtifacts(@Param('id') id: string) {
+    return this.ordersService.findArtifacts(id);
+  }
+
   @Patch(':id/status')
-  updateStatus(@Param('id') id: string, @Body('status') status: string) {
-    return this.ordersService.updateStatus(id, status);
+  @UseGuards(JwtAuthGuard)
+  updateStatus(
+    @Param('id') id: string,
+    @Body('status') status: string,
+    @Req() request: Request & { user?: AuthenticatedUser },
+  ) {
+    return this.ordersService.updateStatus(id, status, request.user);
+  }
+
+  @Patch(':id/complete')
+  @UseGuards(JwtAuthGuard)
+  @UseInterceptors(
+    FileInterceptor('completionProof', {
+      limits: {
+        fileSize: MAX_ORDER_UPLOAD_FILE_SIZE,
+      },
+      fileFilter: (_request, file, callback) => {
+        const isAccepted = file.mimetype.startsWith('image/');
+
+        callback(
+          isAccepted ? null : new BadRequestException('Only image files are allowed.'),
+          isAccepted,
+        );
+      },
+    }),
+  )
+  completeOrder(
+    @Param('id') id: string,
+    @UploadedFile() completionProof?: UploadedOrderFile,
+    @Req() request?: Request & { user?: AuthenticatedUser },
+  ) {
+    if (!completionProof) {
+      throw new BadRequestException('Completion proof image is required.');
+    }
+
+    return this.ordersService.completeWithProof(id, completionProof, request?.user);
   }
 
   @Delete(':id')
@@ -51,6 +96,7 @@ export class OrdersController {
   }
 
   @Put(':id')
+  @UseGuards(JwtAuthGuard)
   @UseInterceptors(
     AnyFilesInterceptor({
       limits: {
@@ -73,12 +119,13 @@ export class OrdersController {
     @Param('id') id: string,
     @Body('order') rawOrder: string,
     @UploadedFiles() files: UploadedOrderFile[],
+    @Req() request: Request & { user?: AuthenticatedUser },
   ) {
     if (!rawOrder) {
       throw new BadRequestException('Order payload is required.');
     }
 
-    return this.ordersService.update(id, rawOrder, files);
+    return this.ordersService.update(id, rawOrder, files, request.user);
   }
 
   @Post()

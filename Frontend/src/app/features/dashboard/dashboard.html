@@ -16,6 +16,11 @@
           (click)="selectTab(tab.id)"
         >
           {{ tab.label }}
+          @if (tab.id === 'due' && dueOrdersCount() > 0) {
+            <span class="tab-count" aria-label="{{ dueOrdersCount() }} due orders">
+              {{ dueOrdersCount() }}
+            </span>
+          }
         </button>
       }
     </div>
@@ -92,6 +97,19 @@
               </td>
               <td class="due-cell">{{ formatDate(order.dueDate) }}</td>
               <td class="actions-cell">
+                <button
+                  type="button"
+                  class="action-button"
+                  (click)="openArtifactsModal(order)"
+                  [attr.aria-label]="'View activity for order ' + order.orderNumber"
+                  title="Order activity"
+                >
+                  <svg viewBox="0 0 24 24" aria-hidden="true">
+                    <circle cx="12" cy="12" r="9" />
+                    <path d="M12 11v5" />
+                    <path d="M12 8h.01" />
+                  </svg>
+                </button>
                 @if (canEditOrders) {
                   <button
                     type="button"
@@ -106,17 +124,48 @@
                     </svg>
                   </button>
                 }
-                <button
-                  type="button"
-                  class="action-button"
-                  (click)="downloadOrder(order)"
-                  [attr.aria-label]="'Download order ' + order.orderNumber + ' as PDF'"
-                  title="Download PDF"
-                >
-                  <svg viewBox="0 0 24 24" aria-hidden="true">
-                    <path d="M12 3v12m-4-4 4 4 4-4M5 20h14" />
-                  </svg>
-                </button>
+                <div class="download-menu">
+                  <button
+                    type="button"
+                    class="action-button"
+                    (click)="downloadOrder(order)"
+                    [attr.aria-label]="'Download all details for order ' + order.orderNumber + ' as PDF'"
+                    title="Download all details"
+                  >
+                    <svg viewBox="0 0 24 24" aria-hidden="true">
+                      <path d="M12 3v12m-4-4 4 4 4-4M5 20h14" />
+                    </svg>
+                  </button>
+                  <button
+                    type="button"
+                    class="action-button action-button--menu"
+                    (click)="toggleDownloadMenu(order.orderNumber)"
+                    [attr.aria-expanded]="openDownloadMenu() === order.orderNumber"
+                    [attr.aria-label]="'Show download options for order ' + order.orderNumber"
+                    title="Download options"
+                  >
+                    <svg viewBox="0 0 24 24" aria-hidden="true">
+                      <path d="m6 9 6 6 6-6" />
+                    </svg>
+                  </button>
+
+                  @if (openDownloadMenu() === order.orderNumber) {
+                    <div class="download-menu__list" role="menu">
+                      <button type="button" role="menuitem" (click)="downloadOrderSection(order, 'all')">
+                        All details
+                      </button>
+                      <button type="button" role="menuitem" (click)="downloadOrderSection(order, 'cutting')">
+                        Cutting only
+                      </button>
+                      <button type="button" role="menuitem" (click)="downloadOrderSection(order, 'printing')">
+                        Printing only
+                      </button>
+                      <button type="button" role="menuitem" (click)="downloadOrderSection(order, 'address')">
+                        Address only
+                      </button>
+                    </div>
+                  }
+                </div>
               </td>
             </tr>
           } @empty {
@@ -190,6 +239,172 @@
           <button type="button" class="secondary-button" (click)="cancelEditOrder()">Cancel</button>
           <button type="button" class="primary-button" (click)="confirmEditOrder()">Yes, edit</button>
         </div>
+      </div>
+    </div>
+  }
+
+  @if (orderPendingArtifacts(); as order) {
+    <div class="activity-modal" role="dialog" aria-modal="true" aria-labelledby="activity-title">
+      <div class="activity-modal__content">
+        <header class="activity-modal__header">
+          <div>
+            <span class="activity-modal__eyebrow">Order activity</span>
+            <h2 id="activity-title">{{ order.orderNumber }} artifacts</h2>
+            <p>Status changes, edits, and completion proof uploads for this order.</p>
+          </div>
+          <button type="button" class="modal-close-button" (click)="closeArtifactsModal()" aria-label="Close activity dialog">
+            <svg viewBox="0 0 24 24" aria-hidden="true">
+              <path d="M6 6l12 12M18 6 6 18" />
+            </svg>
+          </button>
+        </header>
+
+        <div class="activity-modal__body">
+          @if (isArtifactsLoading()) {
+            <div class="activity-empty">Loading activity...</div>
+          } @else {
+            <div class="activity-list">
+              @for (artifact of orderArtifacts(); track artifact.id) {
+                <article class="activity-item">
+                  <span class="activity-item__icon">
+                    @if (artifact.type === 'STATUS_UPDATED') {
+                      <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12h14M13 6l6 6-6 6" /></svg>
+                    } @else if (artifact.type === 'ORDER_EDITED') {
+                      <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 20h9" /><path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4Z" /></svg>
+                    } @else {
+                      <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3v12m-4-4 4 4 4-4M5 20h14" /></svg>
+                    }
+                  </span>
+                  <div class="activity-item__content">
+                    <div class="activity-item__heading">
+                      <strong>{{ artifact.title }}</strong>
+                      <time>{{ formatDateTime(artifact.createdAt) }}</time>
+                    </div>
+                    <p>{{ artifact.description }}</p>
+                    <div class="activity-item__meta">
+                      <span>By {{ artifactActorLabel(artifact) }}</span>
+                      @if (artifact.actor.role) {
+                        <span>{{ artifact.actor.role }}</span>
+                      }
+                      @if (artifactMetadataValue(artifact, 'fileUrl'); as fileUrl) {
+                        <a [href]="fileUrl" target="_blank" rel="noopener">View proof</a>
+                      }
+                    </div>
+                  </div>
+                </article>
+              } @empty {
+                <div class="activity-empty">No artifacts have been captured for this order yet.</div>
+              }
+            </div>
+          }
+        </div>
+      </div>
+    </div>
+  }
+
+  @if (orderPendingCompletion(); as order) {
+    <div class="complete-modal" role="dialog" aria-modal="true" aria-labelledby="complete-order-title">
+      <div class="complete-modal__content">
+        <header class="complete-modal__header">
+          <div>
+            <span class="complete-modal__eyebrow">Complete order</span>
+            <h2 id="complete-order-title">Upload proof for {{ order.orderNumber }}</h2>
+            <p>Review the order details, then add a completed bag proof before marking this order complete.</p>
+          </div>
+          <button type="button" class="modal-close-button" (click)="cancelCompletion()" aria-label="Close completion dialog">
+            <svg viewBox="0 0 24 24" aria-hidden="true">
+              <path d="M6 6l12 12M18 6 6 18" />
+            </svg>
+          </button>
+        </header>
+
+        <div class="complete-modal__scroll">
+          @if (isCompletionPreviewLoading()) {
+            <div class="completion-loading">Loading order preview...</div>
+          } @else if (completionOrderDetails(); as orderDetails) {
+            <section class="completion-summary" aria-label="Order summary">
+              <article>
+                <span>Order size</span>
+                <strong>
+                  {{ orderDetails.bag.width ?? '-' }}w x {{ orderDetails.bag.height ?? '-' }}h x
+                  {{ orderDetails.bag.gusset ?? '-' }}g
+                </strong>
+              </article>
+              <article>
+                <span>Quantity</span>
+                <strong>{{ orderDetails.bag.quantity ?? '-' }}</strong>
+              </article>
+              <article>
+                <span>Fabric</span>
+                <strong>{{ orderDetails.bag.fabric ?? '-' }}</strong>
+              </article>
+              <article>
+                <span>Due date</span>
+                <strong>{{ formatDate(orderDetails.bag.dueDate ?? '') }}</strong>
+              </article>
+            </section>
+
+            <section class="completion-designs" aria-label="Design previews">
+              <h3>Designs</h3>
+              <div class="completion-design-list">
+                @for (design of orderDetails.designs; track $index) {
+                  <article class="completion-design-card">
+                    <div class="completion-design-card__image">
+                      @if (designImageUrl(design); as imageUrl) {
+                        <img [src]="imageUrl" [alt]="design.fileName || 'Order design preview'" />
+                      } @else {
+                        <span>No design preview</span>
+                      }
+                    </div>
+                    <div>
+                      <strong>{{ design.fileName || design.uploadedFile?.originalName || 'Design ' + ($index + 1) }}</strong>
+                      <p>{{ design.notes || 'No design notes added.' }}</p>
+                    </div>
+                  </article>
+                } @empty {
+                  <p class="completion-empty">No designs are attached to this order.</p>
+                }
+              </div>
+            </section>
+          } @else {
+            <div class="completion-loading">Unable to load order preview. Please try again.</div>
+          }
+        </div>
+
+        <footer class="complete-modal__footer">
+          <div class="proof-upload-group">
+            <label class="proof-upload">
+              <input type="file" accept="image/*" (change)="handleCompletionProofUpload($event)" />
+              <span>
+                <strong>Upload completed bag proof</strong>
+                <small>{{ completionProofFileName() || 'PNG, JPG, or JPEG image' }}</small>
+              </span>
+            </label>
+
+            @if (completionProofPreviewUrl(); as proofPreviewUrl) {
+              <div class="proof-preview">
+                <img [src]="proofPreviewUrl" alt="Completed bag proof preview" />
+                <button type="button" (click)="removeCompletionProof()" aria-label="Remove uploaded proof">
+                  <svg viewBox="0 0 24 24" aria-hidden="true">
+                    <path d="M6 6l12 12M18 6 6 18" />
+                  </svg>
+                </button>
+              </div>
+            }
+          </div>
+
+          <div class="complete-modal__actions">
+            <button type="button" class="secondary-button" (click)="cancelCompletion()">Cancel</button>
+            <button
+              type="button"
+              class="primary-button"
+              [disabled]="!completionProofPreviewUrl()"
+              (click)="confirmCompletion()"
+            >
+              Mark complete
+            </button>
+          </div>
+        </footer>
       </div>
     </div>
   }

@@ -15,8 +15,9 @@ async function bootstrap() {
   app.enableCors({
     origin: (origin: string | undefined, callback: (error: Error | null, allow?: boolean) => void) => {
       const isLocalDevOrigin = /^http:\/\/(localhost|127\.0\.0\.1):\d+$/.test(origin ?? '');
+      const isCapacitorOrigin = ['capacitor://localhost', 'ionic://localhost'].includes(origin ?? '');
 
-      callback(null, !origin || origin === configuredOrigin || isLocalDevOrigin);
+      callback(null, !origin || origin === configuredOrigin || isLocalDevOrigin || isCapacitorOrigin);
     },
     credentials: true,
   });

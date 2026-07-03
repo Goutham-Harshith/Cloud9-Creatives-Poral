@@ -78,12 +78,28 @@ export interface OrderDetails {
     notes: string | null;
     uploadedFile: UploadedOrderFile | null;
   }>;
+  completionProof: UploadedOrderFile | null;
 }
 
 export interface UpdatedOrderStatus {
   id: string;
   orderNumber: string;
   status: DashboardOrder['status'];
+}
+
+export interface OrderArtifact {
+  id: string;
+  type: 'STATUS_UPDATED' | 'ORDER_EDITED' | 'PROOF_UPLOADED';
+  title: string;
+  description: string;
+  createdAt: string;
+  actor: {
+    id: string | null;
+    name: string | null;
+    email: string | null;
+    role: string | null;
+  };
+  metadata: Record<string, unknown> | null;
 }
 
 export interface CapacityReservation {
@@ -145,6 +161,10 @@ export class OrderService {
     return this.http.get<OrderDetails>(`${API_BASE_URL}/orders/${orderId}`);
   }
 
+  getOrderArtifacts(orderId: string): Observable<OrderArtifact[]> {
+    return this.http.get<OrderArtifact[]>(`${API_BASE_URL}/orders/${orderId}/artifacts`);
+  }
+
   getCapacitySchedule(from: string, to: string): Observable<CapacitySchedule> {
     return this.http.get<CapacitySchedule>(`${API_BASE_URL}/orders/capacity`, {
       params: { from, to },
@@ -176,6 +196,14 @@ export class OrderService {
     return this.http.patch<UpdatedOrderStatus>(`${API_BASE_URL}/orders/${orderId}/status`, {
       status,
     });
+  }
+
+  completeOrder(orderId: string, completionProof: File): Observable<UpdatedOrderStatus> {
+    const formData = new FormData();
+
+    formData.append('completionProof', completionProof, completionProof.name);
+
+    return this.http.patch<UpdatedOrderStatus>(`${API_BASE_URL}/orders/${orderId}/complete`, formData);
   }
 
   deleteOrder(orderId: string): Observable<DeletedOrder> {

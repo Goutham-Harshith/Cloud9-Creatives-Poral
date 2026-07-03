@@ -3,10 +3,11 @@ import { Router } from '@angular/router';
 import jsPDF from 'jspdf';
 
 import { AuthService } from '../../core/auth/auth.service';
-import { DashboardOrder, OrderDetails, OrderService } from '../../core/orders/order.service';
+import { DashboardOrder, OrderArtifact, OrderDetails, OrderService } from '../../core/orders/order.service';
 
 type OrderStatus = 'Ready to pick' | 'In progress' | 'Complete';
 type OrderTab = 'current' | 'due' | 'completed';
+type DownloadSection = 'all' | 'cutting' | 'printing' | 'address';
 
 type Order = DashboardOrder;
 type CutPieceHighlight = 'none' | 'juco' | 'natural';
@@ -29,7 +30,17 @@ export class Dashboard implements OnInit {
   protected readonly orders = signal<Order[]>([]);
   protected readonly isLoading = signal(false);
   protected readonly openStatusMenu = signal<string | null>(null);
+  protected readonly openDownloadMenu = signal<string | null>(null);
   protected readonly orderPendingEdit = signal<Order | null>(null);
+  protected readonly orderPendingArtifacts = signal<Order | null>(null);
+  protected readonly orderArtifacts = signal<OrderArtifact[]>([]);
+  protected readonly isArtifactsLoading = signal(false);
+  protected readonly orderPendingCompletion = signal<Order | null>(null);
+  protected readonly completionOrderDetails = signal<OrderDetails | null>(null);
+  protected readonly isCompletionPreviewLoading = signal(false);
+  protected readonly completionProofFile = signal<File | null>(null);
+  protected readonly completionProofPreviewUrl = signal<string | null>(null);
+  protected readonly completionProofFileName = signal<string | null>(null);
   protected readonly statusOptions: OrderStatus[] = ['Ready to pick', 'In progress', 'Complete'];
   protected readonly canEditOrders = this.authService.canAccessSales;
 
@@ -41,11 +52,18 @@ export class Dashboard implements OnInit {
 
   private readonly today = new Date(new Date().setHours(0, 0, 0, 0));
 
+  protected readonly dueOrdersCount = computed(
+    () =>
+      this.orders().filter(
+        (order) => order.status !== 'Complete' && this.toDate(order.dueDate) < this.today,
+      ).length,
+  );
+
   protected readonly filteredOrders = computed(() => {
     const activeTab = this.activeTab();
     const searchTerm = this.searchTerm().trim().toLowerCase();
 
-    return this.orders()
+    const filteredOrders = this.orders()
       .filter((order) => {
         const dueDate = this.toDate(order.dueDate);
 
@@ -69,10 +87,18 @@ export class Dashboard implements OnInit {
           order.orderNumber,
           order.size,
         ].some((value) => value.toLowerCase().includes(searchTerm));
-      })
-      .sort(
-        (first, second) => this.toDate(first.dueDate).getTime() - this.toDate(second.dueDate).getTime(),
+      });
+
+    if (activeTab === 'completed') {
+      return filteredOrders.sort(
+        (first, second) =>
+          this.toDate(second.updatedDate).getTime() - this.toDate(first.updatedDate).getTime(),
       );
+    }
+
+    return filteredOrders.sort(
+      (first, second) => this.toDate(first.dueDate).getTime() - this.toDate(second.dueDate).getTime(),
+    );
   });
 
   protected readonly totalPages = computed(() =>
@@ -158,13 +184,26 @@ export class Dashboard implements OnInit {
   }
 
   protected toggleStatusMenu(orderNumber: string): void {
+    this.openDownloadMenu.set(null);
     this.openStatusMenu.update((currentOrderNumber) =>
+      currentOrderNumber === orderNumber ? null : orderNumber,
+    );
+  }
+
+  protected toggleDownloadMenu(orderNumber: string): void {
+    this.openStatusMenu.set(null);
+    this.openDownloadMenu.update((currentOrderNumber) =>
       currentOrderNumber === orderNumber ? null : orderNumber,
     );
   }
 
   protected updateStatus(order: Order, status: OrderStatus): void {
     this.openStatusMenu.set(null);
+
+    if (status === 'Complete') {
+      this.openCompletionModal(order);
+      return;
+    }
 
     this.orderService.updateOrderStatus(order.id, status).subscribe({
       next: (updatedOrder) => {
@@ -177,6 +216,98 @@ export class Dashboard implements OnInit {
         );
       },
     });
+  }
+
+  protected designImageUrl(design: OrderDetails['designs'][number]): string | null {
+    return this.orderService.getUploadedFileUrl(design.uploadedFile);
+  }
+
+  protected handleCompletionProofUpload(event: Event): void {
+    const file = (event.target as HTMLInputElement).files?.[0] ?? null;
+
+    this.revokeCompletionProofPreview();
+
+    if (!file) {
+      this.completionProofFile.set(null);
+      this.completionProofFileName.set(null);
+      return;
+    }
+
+    this.completionProofFile.set(file);
+    this.completionProofFileName.set(file.name);
+    this.completionProofPreviewUrl.set(URL.createObjectURL(file));
+  }
+
+  protected removeCompletionProof(): void {
+    this.completionProofFile.set(null);
+    this.completionProofFileName.set(null);
+    this.revokeCompletionProofPreview();
+  }
+
+  protected cancelCompletion(): void {
+    this.orderPendingCompletion.set(null);
+    this.completionOrderDetails.set(null);
+    this.isCompletionPreviewLoading.set(false);
+    this.completionProofFile.set(null);
+    this.completionProofFileName.set(null);
+    this.revokeCompletionProofPreview();
+  }
+
+  protected confirmCompletion(): void {
+    const order = this.orderPendingCompletion();
+    const completionProof = this.completionProofFile();
+
+    if (!order || !completionProof) {
+      return;
+    }
+
+    this.orderService.completeOrder(order.id, completionProof).subscribe({
+      next: (updatedOrder) => {
+        this.orders.update((orders) =>
+          orders.map((currentOrder) =>
+            currentOrder.id === updatedOrder.id
+              ? { ...currentOrder, status: updatedOrder.status }
+              : currentOrder,
+          ),
+        );
+        this.cancelCompletion();
+      },
+    });
+  }
+
+  protected openArtifactsModal(order: Order): void {
+    this.openStatusMenu.set(null);
+    this.openDownloadMenu.set(null);
+    this.orderPendingArtifacts.set(order);
+    this.orderArtifacts.set([]);
+    this.isArtifactsLoading.set(true);
+
+    this.orderService.getOrderArtifacts(order.id).subscribe({
+      next: (artifacts) => {
+        this.orderArtifacts.set(artifacts);
+        this.isArtifactsLoading.set(false);
+      },
+      error: () => {
+        this.orderArtifacts.set([]);
+        this.isArtifactsLoading.set(false);
+      },
+    });
+  }
+
+  protected closeArtifactsModal(): void {
+    this.orderPendingArtifacts.set(null);
+    this.orderArtifacts.set([]);
+    this.isArtifactsLoading.set(false);
+  }
+
+  protected artifactActorLabel(artifact: OrderArtifact): string {
+    return artifact.actor.name || artifact.actor.email || 'Unknown user';
+  }
+
+  protected artifactMetadataValue(artifact: OrderArtifact, key: string): string | null {
+    const value = artifact.metadata?.[key];
+
+    return typeof value === 'string' && value ? value : null;
   }
 
   protected editOrder(order: Order): void {
@@ -211,10 +342,34 @@ export class Dashboard implements OnInit {
     });
   }
 
-  protected downloadOrder(order: Order): void {
+  private openCompletionModal(order: Order): void {
+    this.orderPendingCompletion.set(order);
+    this.completionOrderDetails.set(null);
+    this.completionProofFileName.set(null);
+    this.revokeCompletionProofPreview();
+    this.isCompletionPreviewLoading.set(true);
+
     this.orderService.getOrder(order.id).subscribe({
       next: (orderDetails) => {
-        void this.downloadOrderPdf(orderDetails);
+        this.completionOrderDetails.set(orderDetails);
+        this.isCompletionPreviewLoading.set(false);
+      },
+      error: () => {
+        this.isCompletionPreviewLoading.set(false);
+      },
+    });
+  }
+
+  protected downloadOrder(order: Order): void {
+    this.downloadOrderSection(order, 'all');
+  }
+
+  protected downloadOrderSection(order: Order, section: DownloadSection): void {
+    this.openDownloadMenu.set(null);
+
+    this.orderService.getOrder(order.id).subscribe({
+      next: (orderDetails) => {
+        void this.downloadOrderPdf(orderDetails, section);
       },
     });
   }
@@ -239,17 +394,32 @@ export class Dashboard implements OnInit {
     return date.includes('T') ? new Date(date) : new Date(`${date}T00:00:00`);
   }
 
-  private async downloadOrderPdf(order: OrderDetails): Promise<void> {
+  private async downloadOrderPdf(order: OrderDetails, section: DownloadSection): Promise<void> {
     const pdf = new jsPDF({
       orientation: 'portrait',
       unit: 'mm',
       format: 'a4',
     });
 
-    this.addCuttingPage(pdf, order);
-    await this.addDesignPages(pdf, order);
-    this.addCustomerPage(pdf, order);
-    pdf.save(`${order.orderNumber}-order-details.pdf`);
+    if (section === 'cutting') {
+      this.addCuttingPage(pdf, order);
+    }
+
+    if (section === 'printing') {
+      await this.addDesignPages(pdf, order, false);
+    }
+
+    if (section === 'address') {
+      this.addCustomerPage(pdf, order, false);
+    }
+
+    if (section === 'all') {
+      this.addCuttingPage(pdf, order);
+      await this.addDesignPages(pdf, order);
+      this.addCustomerPage(pdf, order);
+    }
+
+    pdf.save(`${order.orderNumber}-${section === 'all' ? 'order-details' : section}.pdf`);
   }
 
   private addPageHeader(pdf: jsPDF, orderNumber: string): void {
@@ -426,71 +596,71 @@ export class Dashboard implements OnInit {
     return y + 6;
   }
 
-  private async addDesignPages(pdf: jsPDF, order: OrderDetails): Promise<void> {
+  private async addDesignPages(pdf: jsPDF, order: OrderDetails, addPageBeforeFirst = true): Promise<void> {
     const designs = order.designs.length ? order.designs : [{ fileName: 'No design added', notes: '-', uploadedFile: null }];
 
-    for (let index = 0; index < designs.length; index += 2) {
-      pdf.addPage();
+    for (const [index, design] of designs.entries()) {
+      if (addPageBeforeFirst || index > 0) {
+        pdf.addPage();
+      }
+
       this.addPageHeader(pdf, order.orderNumber);
       let y = this.addSectionTitle(pdf, 'Print details', 29);
       y = this.addPrintDimensionSummary(pdf, order, y);
-      const pageDesigns = designs.slice(index, index + 2);
 
-      for (const [offset, design] of pageDesigns.entries()) {
-        const cardY = y + offset * 107;
-        pdf.setDrawColor(232, 225, 237);
-        pdf.roundedRect(12, cardY, 186, 101, 2, 2, 'S');
-        pdf.setFont('helvetica', 'bold');
-        pdf.setFontSize(11);
-        pdf.setTextColor(33, 26, 46);
-        pdf.text(`Design ${index + offset + 1}`, 16, cardY + 8);
+      const cardY = y;
+      pdf.setDrawColor(232, 225, 237);
+      pdf.roundedRect(12, cardY, 186, 211, 2, 2, 'S');
+      pdf.setFont('helvetica', 'bold');
+      pdf.setFontSize(11);
+      pdf.setTextColor(33, 26, 46);
+      pdf.text(`Design ${index + 1}`, 16, cardY + 8);
 
-        const fileName = design.fileName || design.uploadedFile?.originalName || 'No file selected';
-        pdf.setFont('helvetica', 'normal');
-        pdf.setFontSize(9);
-        pdf.setTextColor(85, 76, 98);
-        pdf.text(this.truncateText(pdf, fileName, 118), 44, cardY + 8);
+      const fileName = design.fileName || design.uploadedFile?.originalName || 'No file selected';
+      pdf.setFont('helvetica', 'normal');
+      pdf.setFontSize(9);
+      pdf.setTextColor(85, 76, 98);
+      pdf.text(this.truncateText(pdf, fileName, 118), 44, cardY + 8);
 
-        pdf.setFont('helvetica', 'bold');
-        pdf.setFontSize(10);
-        pdf.setTextColor(33, 26, 46);
-        pdf.text('Description:', 16, cardY + 17);
-        pdf.setFont('helvetica', 'normal');
-        pdf.setFontSize(9);
-        pdf.setTextColor(85, 76, 98);
-        pdf.text(this.truncateText(pdf, design.notes || '-', 141), 49, cardY + 17);
+      pdf.setFont('helvetica', 'bold');
+      pdf.setFontSize(10);
+      pdf.setTextColor(33, 26, 46);
+      pdf.text('Description:', 16, cardY + 17);
+      pdf.setFont('helvetica', 'normal');
+      pdf.setFontSize(9);
+      pdf.setTextColor(85, 76, 98);
+      pdf.text(this.truncateText(pdf, design.notes || '-', 141), 49, cardY + 17);
 
-        const imageX = 16;
-        const imageY = cardY + 23;
-        const imageW = 178;
-        const imageH = 73;
-        pdf.setFillColor(248, 245, 250);
-        pdf.roundedRect(imageX, imageY, imageW, imageH, 2, 2, 'F');
+      const imageX = 16;
+      const imageY = cardY + 27;
+      const imageW = 178;
+      const imageH = 179;
+      pdf.setFillColor(248, 245, 250);
+      pdf.roundedRect(imageX, imageY, imageW, imageH, 2, 2, 'F');
 
-        if (design.uploadedFile?.url && design.uploadedFile.mimeType.startsWith('image/')) {
-          try {
-            const imageUrl = this.orderService.getUploadedFileUrl(design.uploadedFile);
+      if (design.uploadedFile?.url && design.uploadedFile.mimeType.startsWith('image/')) {
+        try {
+          const imageUrl = this.orderService.getUploadedFileUrl(design.uploadedFile);
 
-            if (!imageUrl) {
-              throw new Error('Missing design image URL');
-            }
-
-            const image = await this.loadImage(imageUrl);
-            const dimensions = this.fitImage(image.width, image.height, imageW, imageH);
-            pdf.addImage(
-              image,
-              design.uploadedFile.mimeType.includes('png') ? 'PNG' : 'JPEG',
-              imageX + dimensions.x,
-              imageY + dimensions.y,
-              dimensions.width,
-              dimensions.height,
-            );
-          } catch {
-            this.addImagePlaceholder(pdf, imageX, imageY, imageW, imageH, 'Image unavailable');
+          if (!imageUrl) {
+            throw new Error('Missing design image URL');
           }
-        } else {
-          this.addImagePlaceholder(pdf, imageX, imageY, imageW, imageH, 'No image preview');
+
+          const image = await this.loadImage(imageUrl);
+          const dimensions = this.fitImage(image.width, image.height, imageW, imageH);
+          pdf.addImage(
+            image,
+            design.uploadedFile.mimeType.includes('png') ? 'PNG' : 'JPEG',
+            imageX + dimensions.x,
+            imageY + dimensions.y,
+            dimensions.width,
+            dimensions.height,
+          );
+        } catch {
+          this.addImagePlaceholder(pdf, imageX, imageY, imageW, imageH, 'Image unavailable');
         }
+      } else {
+        this.addImagePlaceholder(pdf, imageX, imageY, imageW, imageH, 'No image preview');
       }
     }
   }
@@ -536,8 +706,11 @@ export class Dashboard implements OnInit {
     };
   }
 
-  private addCustomerPage(pdf: jsPDF, order: OrderDetails): void {
-    pdf.addPage();
+  private addCustomerPage(pdf: jsPDF, order: OrderDetails, addPageBefore = true): void {
+    if (addPageBefore) {
+      pdf.addPage();
+    }
+
     this.addPageHeader(pdf, order.orderNumber);
     let y = this.addSectionTitle(pdf, 'Customer and dispatch details', 29);
     const customer = order.customer;
@@ -660,5 +833,14 @@ export class Dashboard implements OnInit {
       width,
       height,
     };
+  }
+
+  private revokeCompletionProofPreview(): void {
+    const previewUrl = this.completionProofPreviewUrl();
+
+    if (previewUrl) {
+      URL.revokeObjectURL(previewUrl);
+      this.completionProofPreviewUrl.set(null);
+    }
   }
 }

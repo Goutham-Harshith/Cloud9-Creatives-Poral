@@ -24,6 +24,12 @@ enum OrderStatus {
   COMPLETE
 }
 
+enum OrderArtifactType {
+  STATUS_UPDATED
+  ORDER_EDITED
+  PROOF_UPLOADED
+}
+
 model User {
   id           String   @id @default(uuid())
   email        String   @unique
@@ -60,12 +66,38 @@ model Order {
   customerAddress        String
   customerCourierType    String
   customerCourierNotes   String?
+  completionProofOriginalName String?
+  completionProofStoredName   String?
+  completionProofMimeType     String?
+  completionProofSize         Int?
+  completionProofPath         String?
+  completionProofUrl          String?
   createdAt              DateTime      @default(now())
   updatedAt              DateTime      @updatedAt
   designs                OrderDesign[]
   capacityReservations   OrderCapacityReservation[]
+  artifacts              OrderArtifact[]
 
   @@map("orders")
+}
+
+model OrderArtifact {
+  id          String            @id @default(uuid())
+  orderId     String
+  type        OrderArtifactType
+  title       String
+  description String
+  actorUserId String?
+  actorName   String?
+  actorEmail  String?
+  actorRole   String?
+  metadata    Json?
+  createdAt   DateTime          @default(now())
+  order       Order             @relation(fields: [orderId], references: [id], onDelete: Cascade)
+
+  @@index([orderId])
+  @@index([createdAt])
+  @@map("order_artifacts")
 }
 
 model OrderCapacityReservation {
