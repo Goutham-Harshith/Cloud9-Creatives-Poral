@@ -167,6 +167,10 @@ tbody tr {
   transition: background-color 160ms ease;
 }
 
+.order-row--menu-open {
+  z-index: 20;
+}
+
 tbody tr:hover {
   background: rgba(92, 32, 168, 0.025);
 }
@@ -262,6 +266,11 @@ td strong {
   display: flex;
   gap: 8px;
   justify-content: center;
+  overflow: visible;
+}
+
+.actions-cell--menu-open {
+  z-index: 60 !important;
 }
 
 .pagination {
@@ -370,7 +379,7 @@ td strong {
   align-items: center;
   display: inline-flex;
   position: relative;
-  z-index: 1;
+  z-index: 5;
 }
 
 .download-menu > .action-button:first-child {
@@ -879,7 +888,7 @@ td strong {
     -webkit-overflow-scrolling: touch;
   }
 
-  .table-wrap:has(.download-menu__list) {
+  .table-wrap--menu-open {
     padding-bottom: 172px;
   }
 
@@ -894,14 +903,6 @@ td strong {
     position: sticky;
     z-index: 2;
     background: var(--color-surface);
-  }
-
-  tbody tr:has(.download-menu__list) {
-    z-index: 8;
-  }
-
-  .actions-cell:has(.download-menu__list) {
-    z-index: 12;
   }
 
   .due-heading,

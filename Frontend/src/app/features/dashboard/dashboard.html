@@ -43,7 +43,7 @@
       }
     </div>
 
-    <div class="table-wrap">
+    <div class="table-wrap" [class.table-wrap--menu-open]="openDownloadMenu()">
       <table>
         <thead>
           <tr>
@@ -59,7 +59,7 @@
         </thead>
         <tbody>
           @for (order of visibleOrders(); track order.orderNumber) {
-            <tr>
+            <tr [class.order-row--menu-open]="openDownloadMenu() === order.orderNumber">
               <td><strong>{{ order.orderNumber }}</strong></td>
               <td>{{ order.type }}</td>
               <td>{{ order.quantity ?? '-' }}</td>
@@ -96,7 +96,10 @@
                 </div>
               </td>
               <td class="due-cell">{{ formatDate(order.dueDate) }}</td>
-              <td class="actions-cell">
+              <td
+                class="actions-cell"
+                [class.actions-cell--menu-open]="openDownloadMenu() === order.orderNumber"
+              >
                 <button
                   type="button"
                   class="action-button"
