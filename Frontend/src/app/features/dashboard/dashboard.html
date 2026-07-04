@@ -100,74 +100,76 @@
                 class="actions-cell"
                 [class.actions-cell--menu-open]="openDownloadMenu() === order.orderNumber"
               >
-                <button
-                  type="button"
-                  class="action-button"
-                  (click)="openArtifactsModal(order)"
-                  [attr.aria-label]="'View activity for order ' + order.orderNumber"
-                  title="Order activity"
-                >
-                  <svg viewBox="0 0 24 24" aria-hidden="true">
-                    <circle cx="12" cy="12" r="9" />
-                    <path d="M12 11v5" />
-                    <path d="M12 8h.01" />
-                  </svg>
-                </button>
-                @if (canEditOrders) {
+                <div class="actions-cell__content">
                   <button
                     type="button"
                     class="action-button"
-                    (click)="editOrder(order)"
-                    [attr.aria-label]="'Edit order ' + order.orderNumber"
-                    title="Edit order"
+                    (click)="openArtifactsModal(order)"
+                    [attr.aria-label]="'View activity for order ' + order.orderNumber"
+                    title="Order activity"
                   >
                     <svg viewBox="0 0 24 24" aria-hidden="true">
-                      <path d="M12 20h9" />
-                      <path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4Z" />
+                      <circle cx="12" cy="12" r="9" />
+                      <path d="M12 11v5" />
+                      <path d="M12 8h.01" />
                     </svg>
                   </button>
-                }
-                <div class="download-menu">
-                  <button
-                    type="button"
-                    class="action-button"
-                    (click)="downloadOrder(order)"
-                    [attr.aria-label]="'Download all details for order ' + order.orderNumber + ' as PDF'"
-                    title="Download all details"
-                  >
-                    <svg viewBox="0 0 24 24" aria-hidden="true">
-                      <path d="M12 3v12m-4-4 4 4 4-4M5 20h14" />
-                    </svg>
-                  </button>
-                  <button
-                    type="button"
-                    class="action-button action-button--menu"
-                    (click)="toggleDownloadMenu(order.orderNumber)"
-                    [attr.aria-expanded]="openDownloadMenu() === order.orderNumber"
-                    [attr.aria-label]="'Show download options for order ' + order.orderNumber"
-                    title="Download options"
-                  >
-                    <svg viewBox="0 0 24 24" aria-hidden="true">
-                      <path d="m6 9 6 6 6-6" />
-                    </svg>
-                  </button>
-
-                  @if (openDownloadMenu() === order.orderNumber) {
-                    <div class="download-menu__list" role="menu">
-                      <button type="button" role="menuitem" (click)="downloadOrderSection(order, 'all')">
-                        All details
-                      </button>
-                      <button type="button" role="menuitem" (click)="downloadOrderSection(order, 'cutting')">
-                        Cutting only
-                      </button>
-                      <button type="button" role="menuitem" (click)="downloadOrderSection(order, 'printing')">
-                        Printing only
-                      </button>
-                      <button type="button" role="menuitem" (click)="downloadOrderSection(order, 'address')">
-                        Address only
-                      </button>
-                    </div>
+                  @if (canEditOrders) {
+                    <button
+                      type="button"
+                      class="action-button"
+                      (click)="editOrder(order)"
+                      [attr.aria-label]="'Edit order ' + order.orderNumber"
+                      title="Edit order"
+                    >
+                      <svg viewBox="0 0 24 24" aria-hidden="true">
+                        <path d="M12 20h9" />
+                        <path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4Z" />
+                      </svg>
+                    </button>
                   }
+                  <div class="download-menu">
+                    <button
+                      type="button"
+                      class="action-button"
+                      (click)="downloadOrder(order)"
+                      [attr.aria-label]="'Download all details for order ' + order.orderNumber + ' as PDF'"
+                      title="Download all details"
+                    >
+                      <svg viewBox="0 0 24 24" aria-hidden="true">
+                        <path d="M12 3v12m-4-4 4 4 4-4M5 20h14" />
+                      </svg>
+                    </button>
+                    <button
+                      type="button"
+                      class="action-button action-button--menu"
+                      (click)="toggleDownloadMenu(order.orderNumber)"
+                      [attr.aria-expanded]="openDownloadMenu() === order.orderNumber"
+                      [attr.aria-label]="'Show download options for order ' + order.orderNumber"
+                      title="Download options"
+                    >
+                      <svg viewBox="0 0 24 24" aria-hidden="true">
+                        <path d="m6 9 6 6 6-6" />
+                      </svg>
+                    </button>
+
+                    @if (openDownloadMenu() === order.orderNumber) {
+                      <div class="download-menu__list" role="menu">
+                        <button type="button" role="menuitem" (click)="downloadOrderSection(order, 'all')">
+                          All details
+                        </button>
+                        <button type="button" role="menuitem" (click)="downloadOrderSection(order, 'cutting')">
+                          Cutting only
+                        </button>
+                        <button type="button" role="menuitem" (click)="downloadOrderSection(order, 'printing')">
+                          Printing only
+                        </button>
+                        <button type="button" role="menuitem" (click)="downloadOrderSection(order, 'address')">
+                          Address only
+                        </button>
+                      </div>
+                    }
+                  </div>
                 </div>
               </td>
             </tr>

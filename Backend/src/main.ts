@@ -15,9 +15,23 @@ async function bootstrap() {
   app.enableCors({
     origin: (origin: string | undefined, callback: (error: Error | null, allow?: boolean) => void) => {
       const isLocalDevOrigin = /^http:\/\/(localhost|127\.0\.0\.1):\d+$/.test(origin ?? '');
+
+      // Uncomment below code to test in ipad
+
+      // const isLanDevOrigin = /^http:\/\/(10\.\d+\.\d+\.\d+|172\.(1[6-9]|2\d|3[0-1])\.\d+\.\d+|192\.168\.\d+\.\d+):\d+$/.test(
+      //   origin ?? '',
+      // );
       const isCapacitorOrigin = ['capacitor://localhost', 'ionic://localhost'].includes(origin ?? '');
 
       callback(null, !origin || origin === configuredOrigin || isLocalDevOrigin || isCapacitorOrigin);
+
+      
+      // Uncomment below code to test in ipad
+      
+      // callback(
+      //   null,
+      //   !origin || origin === configuredOrigin || isLocalDevOrigin || isLanDevOrigin || isCapacitorOrigin,
+      // );
     },
     credentials: true,
   });

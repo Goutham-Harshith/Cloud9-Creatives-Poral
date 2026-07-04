@@ -262,15 +262,17 @@ td strong {
 }
 
 .actions-cell {
-  align-items: center;
-  display: flex;
-  gap: 8px;
-  justify-content: center;
-  overflow: visible;
+  vertical-align: middle;
 }
 
 .actions-cell--menu-open {
   z-index: 60 !important;
+}
+
+.actions-cell__content {
+  align-items: center;
+  display: inline-flex;
+  gap: 8px;
 }
 
 .pagination {
