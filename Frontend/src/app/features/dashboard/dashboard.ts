@@ -310,6 +310,12 @@ export class Dashboard implements OnInit {
     return typeof value === 'string' && value ? value : null;
   }
 
+  protected artifactProofUrl(artifact: OrderArtifact): string | null {
+    return this.orderService.getFileUrl(
+      this.artifactMetadataValue(artifact, 'filePath') ?? this.artifactMetadataValue(artifact, 'fileUrl'),
+    );
+  }
+
   protected editOrder(order: Order): void {
     if (order.status === 'In progress') {
       this.orderPendingEdit.set(order);

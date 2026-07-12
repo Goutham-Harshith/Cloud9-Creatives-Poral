@@ -132,7 +132,11 @@ export class OrderService {
   constructor(private readonly http: HttpClient) {}
 
   getUploadedFileUrl(uploadedFile: UploadedOrderFile | null): string | null {
-    return uploadedFile?.url ? this.resolveUploadedFileUrl(uploadedFile.url) : null;
+    return uploadedFile ? this.getFileUrl(uploadedFile.path || uploadedFile.url) : null;
+  }
+
+  getFileUrl(pathOrUrl: string | null | undefined): string | null {
+    return pathOrUrl ? this.resolveUploadedFileUrl(pathOrUrl) : null;
   }
 
   createOrder(order: CreateOrderPayload): Observable<CreatedOrder> {

@@ -291,7 +291,7 @@
                       @if (artifact.actor.role) {
                         <span>{{ artifact.actor.role }}</span>
                       }
-                      @if (artifactMetadataValue(artifact, 'fileUrl'); as fileUrl) {
+                      @if (artifactProofUrl(artifact); as fileUrl) {
                         <a [href]="fileUrl" target="_blank" rel="noopener">View proof</a>
                       }
                     </div>

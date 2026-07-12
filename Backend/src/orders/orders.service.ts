@@ -772,7 +772,7 @@ export class OrdersService {
             mimeType: file.mimetype,
             size: file.size,
             path: relativePath,
-            url: `${process.env.BACKEND_PUBLIC_URL ?? 'http://localhost:3000'}${relativePath}`,
+            url: this.buildUploadUrl(relativePath),
           },
         };
       }),
@@ -797,8 +797,14 @@ export class OrdersService {
       mimeType: file.mimetype,
       size: file.size,
       path: relativePath,
-      url: `${process.env.BACKEND_PUBLIC_URL ?? 'http://localhost:3000'}${relativePath}`,
+      url: this.buildUploadUrl(relativePath),
     };
+  }
+
+  private buildUploadUrl(relativePath: string): string {
+    return process.env.BACKEND_PUBLIC_URL
+      ? `${process.env.BACKEND_PUBLIC_URL.replace(/\/$/, '')}${relativePath}`
+      : relativePath;
   }
 
   private mapFilesByDesignIndex(files: UploadedOrderFile[]) {
